@@ -1,5 +1,6 @@
-import { FileText, Github, Shield, Zap } from 'lucide-react';
+import { Github, Shield, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import logoIcon from '@/assets/logo-icon.png';
 
 export const Footer = () => {
   return (
@@ -9,9 +10,7 @@ export const Footer = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 text-foreground mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-                <FileText className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img src={logoIcon} alt="PDF World" className="h-8 w-8" />
               <span className="text-xl font-bold tracking-tight">PDF World</span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
