@@ -1,7 +1,23 @@
 import { useState } from 'react';
-import { FileStack, Download, Loader2 } from 'lucide-react';
+import { FileStack, Download, Loader2, GripVertical } from 'lucide-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { SortablePdfCard } from '@/components/SortablePdfCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -11,6 +27,28 @@ const MergePdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFiles((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
 
   const handleMerge = async () => {
     if (files.length < 2) {
@@ -39,6 +77,10 @@ const MergePdf = () => {
     }
   };
 
+  const removeFile = (id: string) => {
+    setFiles(files.filter(f => f.id !== id));
+  };
+
   const moveFile = (index: number, direction: 'up' | 'down') => {
     const newFiles = [...files];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -63,37 +105,40 @@ const MergePdf = () => {
           multiple
         />
 
-        {files.length > 1 && (
-          <div className="p-4 bg-muted/50 rounded-xl">
-            <p className="text-sm text-muted-foreground mb-3">
-              Drag files above to reorder, or use the buttons below:
-            </p>
-            <div className="space-y-2">
-              {files.map((file, index) => (
-                <div key={file.id} className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground w-6">{index + 1}.</span>
-                  <span className="flex-1 text-sm truncate">{file.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveFile(index, 'up')}
-                    disabled={index === 0}
-                    className="h-8 px-2"
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveFile(index, 'down')}
-                    disabled={index === files.length - 1}
-                    className="h-8 px-2"
-                  >
-                    ↓
-                  </Button>
-                </div>
-              ))}
+        {files.length > 0 && (
+          <div className="space-y-4">
+            {/* Reorder Hint */}
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <GripVertical className="h-4 w-4" />
+              <span>Drag tiles to reorder • Order shown = merge order</span>
             </div>
+
+            {/* Thumbnail Grid */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={files.map(f => f.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {files.map((file, index) => (
+                    <SortablePdfCard
+                      key={file.id}
+                      file={file}
+                      index={index}
+                      onRemove={removeFile}
+                      onMoveUp={(i) => moveFile(i, 'up')}
+                      onMoveDown={(i) => moveFile(i, 'down')}
+                      isFirst={index === 0}
+                      isLast={index === files.length - 1}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         )}
 
