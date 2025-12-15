@@ -80,8 +80,8 @@ export const FileDropZone = ({
     }
 
     if (multiple) {
-      // New files go to beginning so first selection appears first
-      onFilesChange([...processedFiles, ...files]);
+      // New files added at the end, first selections stay first
+      onFilesChange([...files, ...processedFiles]);
     } else {
       onFilesChange(processedFiles.slice(0, 1));
     }
