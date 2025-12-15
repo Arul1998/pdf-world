@@ -103,6 +103,7 @@ const MergePdf = () => {
           files={files}
           onFilesChange={setFiles}
           multiple
+          hideFileList
         />
 
         {files.length > 0 && (

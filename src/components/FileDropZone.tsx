@@ -12,6 +12,7 @@ interface FileDropZoneProps {
   files: PDFFile[];
   onFilesChange: (files: PDFFile[]) => void;
   className?: string;
+  hideFileList?: boolean;
 }
 
 export const FileDropZone = ({
@@ -22,6 +23,7 @@ export const FileDropZone = ({
   files,
   onFilesChange,
   className,
+  hideFileList = false,
 }: FileDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,7 +167,7 @@ export const FileDropZone = ({
       )}
 
       {/* File List */}
-      {files.length > 0 && (
+      {!hideFileList && files.length > 0 && (
         <div className="space-y-2 animate-fade-in">
           <p className="text-sm font-medium text-muted-foreground">
             {files.length} file{files.length !== 1 ? 's' : ''} selected
