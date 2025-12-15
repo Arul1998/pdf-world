@@ -3,7 +3,7 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toolCategories } from '@/lib/tool-definitions';
-import logo from '@/assets/logo.png';
+import logoIcon from '@/assets/logo-icon.png';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -11,8 +11,9 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 glass-strong">
       <div className="container flex h-18 items-center justify-between py-4">
-        <Link to="/" className="flex items-center gap-3 text-foreground hover:opacity-90 transition-opacity">
-          <img src={logo} alt="PDF World" className="h-12 md:h-14 w-auto" />
+        <Link to="/" className="flex items-center gap-2.5 text-foreground hover:opacity-90 transition-opacity">
+          <img src={logoIcon} alt="PDF World" className="h-9 w-9 md:h-10 md:w-10" />
+          <span className="text-xl font-bold tracking-tight">PDF World</span>
         </Link>
 
         {/* Desktop Navigation */}
