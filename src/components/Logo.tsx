@@ -18,16 +18,16 @@ export const Logo = ({ showText = true, className, iconClassName }: LogoProps) =
         {/* Document shape */}
         <path
           d="M8 4C8 2.89543 8.89543 2 10 2H24L32 10V36C32 37.1046 31.1046 38 30 38H10C8.89543 38 8 37.1046 8 36V4Z"
-          fill="hsl(243, 75%, 72%)"
-          fillOpacity="0.15"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="2"
+          fill="#7c3aed"
+          fillOpacity="0.12"
+          stroke="#7c3aed"
+          strokeWidth="2.5"
         />
         {/* Folded corner */}
         <path
           d="M24 2V10H32"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="2"
+          stroke="#7c3aed"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -36,16 +36,16 @@ export const Logo = ({ showText = true, className, iconClassName }: LogoProps) =
           cx="20"
           cy="24"
           r="8"
-          fill="hsl(243, 75%, 72%)"
-          fillOpacity="0.2"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="1.5"
+          fill="#06b6d4"
+          fillOpacity="0.15"
+          stroke="#06b6d4"
+          strokeWidth="2"
         />
         {/* Globe horizontal line */}
         <path
           d="M12 24H28"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="1.5"
+          stroke="#06b6d4"
+          strokeWidth="2"
         />
         {/* Globe vertical ellipse */}
         <ellipse
@@ -54,14 +54,14 @@ export const Logo = ({ showText = true, className, iconClassName }: LogoProps) =
           rx="4"
           ry="8"
           fill="none"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="1.5"
+          stroke="#06b6d4"
+          strokeWidth="2"
         />
         {/* Text lines at top */}
         <path
           d="M12 13H20"
-          stroke="hsl(243, 75%, 72%)"
-          strokeWidth="1.5"
+          stroke="#7c3aed"
+          strokeWidth="2"
           strokeLinecap="round"
         />
       </svg>
@@ -83,15 +83,15 @@ export const LogoIcon = () => (
   >
     <path
       d="M8 4C8 2.89543 8.89543 2 10 2H24L32 10V36C32 37.1046 31.1046 38 30 38H10C8.89543 38 8 37.1046 8 36V4Z"
-      fill="#9b87f5"
-      fillOpacity="0.15"
-      stroke="#9b87f5"
-      strokeWidth="2"
+      fill="#7c3aed"
+      fillOpacity="0.12"
+      stroke="#7c3aed"
+      strokeWidth="2.5"
     />
     <path
       d="M24 2V10H32"
-      stroke="#9b87f5"
-      strokeWidth="2"
+      stroke="#7c3aed"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -99,15 +99,15 @@ export const LogoIcon = () => (
       cx="20"
       cy="24"
       r="8"
-      fill="#9b87f5"
-      fillOpacity="0.2"
-      stroke="#9b87f5"
-      strokeWidth="1.5"
+      fill="#06b6d4"
+      fillOpacity="0.15"
+      stroke="#06b6d4"
+      strokeWidth="2"
     />
     <path
       d="M12 24H28"
-      stroke="#9b87f5"
-      strokeWidth="1.5"
+      stroke="#06b6d4"
+      strokeWidth="2"
     />
     <ellipse
       cx="20"
@@ -115,13 +115,13 @@ export const LogoIcon = () => (
       rx="4"
       ry="8"
       fill="none"
-      stroke="#9b87f5"
-      strokeWidth="1.5"
+      stroke="#06b6d4"
+      strokeWidth="2"
     />
     <path
       d="M12 13H20"
-      stroke="#9b87f5"
-      strokeWidth="1.5"
+      stroke="#7c3aed"
+      strokeWidth="2"
       strokeLinecap="round"
     />
   </svg>
