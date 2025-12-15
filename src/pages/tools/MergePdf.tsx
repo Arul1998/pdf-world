@@ -81,14 +81,6 @@ const MergePdf = () => {
     setFiles(files.filter(f => f.id !== id));
   };
 
-  const moveFile = (index: number, direction: 'up' | 'down') => {
-    const newFiles = [...files];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= files.length) return;
-    [newFiles[index], newFiles[targetIndex]] = [newFiles[targetIndex], newFiles[index]];
-    setFiles(newFiles);
-  };
-
   return (
     <ToolLayout
       title="Merge PDF"
@@ -131,10 +123,6 @@ const MergePdf = () => {
                       file={file}
                       index={index}
                       onRemove={removeFile}
-                      onMoveUp={(i) => moveFile(i, 'up')}
-                      onMoveDown={(i) => moveFile(i, 'down')}
-                      isFirst={index === 0}
-                      isLast={index === files.length - 1}
                     />
                   ))}
                 </div>
