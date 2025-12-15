@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { FileText, Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toolCategories } from '@/lib/tool-definitions';
+import logo from '@/assets/logo.png';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -10,17 +11,8 @@ export const Header = () => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 glass-strong">
       <div className="container flex h-18 items-center justify-between py-4">
-        <Link to="/" className="flex items-center gap-3 text-foreground hover:opacity-80 transition-opacity">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-md">
-            <FileText className="h-5 w-5 text-primary-foreground" />
-            <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-warning">
-              <Sparkles className="h-2.5 w-2.5 text-warning-foreground" />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight">PDF World</span>
-            <span className="text-[10px] text-muted-foreground -mt-0.5">Free PDF Tools</span>
-          </div>
+        <Link to="/" className="flex items-center gap-3 text-foreground hover:opacity-90 transition-opacity">
+          <img src={logo} alt="PDF World" className="h-10 w-auto" />
         </Link>
 
         {/* Desktop Navigation */}
