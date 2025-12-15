@@ -12,7 +12,7 @@ export const Footer = () => {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <FileText className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold tracking-tight">PDF Tools</span>
+              <span className="text-xl font-bold tracking-tight">PDF World</span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
               Free, open-source PDF tools that work 100% in your browser. 
@@ -64,7 +64,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} PDF Tools. Free forever. No account required.</p>
+          <p>© {new Date().getFullYear()} PDF World. Free forever. No account required.</p>
         </div>
       </div>
     </footer>
