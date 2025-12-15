@@ -3,17 +3,16 @@ import { Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toolCategories } from '@/lib/tool-definitions';
-import logoIcon from '@/assets/logo-icon.png';
+import { Logo } from '@/components/Logo';
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 glass-strong">
-      <div className="container flex h-18 items-center justify-between py-4">
-        <Link to="/" className="flex items-center gap-2.5 text-foreground hover:opacity-90 transition-opacity">
-          <img src={logoIcon} alt="PDF World" className="h-9 w-9 md:h-10 md:w-10" />
-          <span className="text-xl font-bold tracking-tight">PDF World</span>
+      <div className="container flex h-16 items-center justify-between">
+        <Link to="/" className="hover:opacity-90 transition-opacity">
+          <Logo iconClassName="h-8 w-8" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -27,7 +26,7 @@ export const Header = () => {
               {category.name}
             </Link>
           ))}
-          <Button asChild size="sm" className="ml-3 rounded-xl h-10 px-6">
+          <Button asChild size="sm" className="ml-3 rounded-xl h-9 px-5">
             <Link to="/#all-tools">All Tools</Link>
           </Button>
         </nav>
@@ -36,7 +35,7 @@ export const Header = () => {
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden h-10 w-10 rounded-xl"
+          className="md:hidden h-9 w-9 rounded-xl"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

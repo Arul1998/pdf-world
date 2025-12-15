@@ -1,6 +1,6 @@
 import { Github, Shield, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import logoIcon from '@/assets/logo-icon.png';
+import { Logo } from '@/components/Logo';
 
 export const Footer = () => {
   return (
@@ -9,9 +9,8 @@ export const Footer = () => {
         <div className="grid gap-8 md:grid-cols-4">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 text-foreground mb-4">
-              <img src={logoIcon} alt="PDF World" className="h-8 w-8" />
-              <span className="text-xl font-bold tracking-tight">PDF World</span>
+            <Link to="/" className="inline-block mb-4">
+              <Logo iconClassName="h-7 w-7" />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
               Free, open-source PDF tools that work 100% in your browser. 
