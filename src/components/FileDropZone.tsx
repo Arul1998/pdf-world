@@ -154,7 +154,7 @@ export const FileDropZone = ({
         </div>
         
         <Button variant="outline" className="pointer-events-none">
-          Select Files
+          {files.length > 0 ? 'Add More Files' : 'Select Files'}
         </Button>
       </div>
 
