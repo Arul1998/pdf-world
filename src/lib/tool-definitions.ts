@@ -28,6 +28,10 @@ import {
   EyeOff,
   GitCompare,
   LucideIcon,
+  Copy,
+  FileEdit,
+  Workflow,
+  FilePlus,
 } from 'lucide-react';
 
 export type ToolCategory = 'organize' | 'optimize' | 'convert-to' | 'convert-from' | 'edit' | 'security';
@@ -116,6 +120,16 @@ export const tools: Tool[] = [
     accepts: ['camera'],
     comingSoon: true,
   },
+  {
+    id: 'copy-pdf',
+    name: 'Copy PDF',
+    description: 'Create a copy of your PDF document',
+    icon: Copy,
+    category: 'organize',
+    path: '/tools/copy-pdf',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
 
   // Optimize
   {
@@ -151,8 +165,8 @@ export const tools: Tool[] = [
   // Convert to PDF
   {
     id: 'jpg-to-pdf',
-    name: 'JPG to PDF',
-    description: 'Convert JPG images to PDF document',
+    name: 'Image to PDF',
+    description: 'Convert JPG/PNG images to PDF document',
     icon: Image,
     category: 'convert-to',
     path: '/tools/jpg-to-pdf',
@@ -180,7 +194,7 @@ export const tools: Tool[] = [
   },
   {
     id: 'ppt-to-pdf',
-    name: 'PPT to PDF',
+    name: 'PowerPoint to PDF',
     description: 'Convert PowerPoint slides to PDF',
     icon: Presentation,
     category: 'convert-to',
@@ -190,12 +204,22 @@ export const tools: Tool[] = [
   },
   {
     id: 'html-to-pdf',
-    name: 'HTML to PDF',
+    name: 'Web to PDF',
     description: 'Convert web pages to PDF',
     icon: Globe,
     category: 'convert-to',
     path: '/tools/html-to-pdf',
     accepts: ['.html', '.htm'],
+    comingSoon: true,
+  },
+  {
+    id: 'office-to-pdf',
+    name: 'Office to PDF',
+    description: 'Convert any Office document to PDF',
+    icon: FileText,
+    category: 'convert-to',
+    path: '/tools/office-to-pdf',
+    accepts: ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'],
     comingSoon: true,
   },
 
@@ -220,12 +244,42 @@ export const tools: Tool[] = [
     comingSoon: true,
   },
   {
+    id: 'pdf-to-word-ocr',
+    name: 'PDF to Word (OCR)',
+    description: 'Convert scanned PDF to Word with OCR',
+    icon: FileSearch,
+    category: 'convert-from',
+    path: '/tools/pdf-to-word-ocr',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
     id: 'pdf-to-excel',
     name: 'PDF to Excel',
     description: 'Convert PDF tables to Excel',
     icon: Sheet,
     category: 'convert-from',
     path: '/tools/pdf-to-excel',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'pdf-to-excel-ocr',
+    name: 'PDF to Excel (OCR)',
+    description: 'Convert scanned PDF to Excel with OCR',
+    icon: FileSearch,
+    category: 'convert-from',
+    path: '/tools/pdf-to-excel-ocr',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'pdf-to-ppt',
+    name: 'PDF to PowerPoint',
+    description: 'Convert PDF to PowerPoint slides',
+    icon: Presentation,
+    category: 'convert-from',
+    path: '/tools/pdf-to-ppt',
     accepts: ['.pdf'],
     comingSoon: true,
   },
@@ -288,6 +342,16 @@ export const tools: Tool[] = [
     accepts: ['.pdf'],
     comingSoon: true,
   },
+  {
+    id: 'pdf-filler',
+    name: 'PDF Filler',
+    description: 'Fill out PDF forms easily',
+    icon: FileEdit,
+    category: 'edit',
+    path: '/tools/pdf-filler',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
 
   // Security
   {
@@ -337,6 +401,16 @@ export const tools: Tool[] = [
     icon: GitCompare,
     category: 'security',
     path: '/tools/compare',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'workflow',
+    name: 'Workflow',
+    description: 'Create automated PDF workflows',
+    icon: Workflow,
+    category: 'security',
+    path: '/tools/workflow',
     accepts: ['.pdf'],
     comingSoon: true,
   },
