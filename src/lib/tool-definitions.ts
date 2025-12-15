@@ -1,0 +1,348 @@
+import {
+  FileStack,
+  Scissors,
+  Trash2,
+  FileOutput,
+  ArrowDownUp,
+  ScanLine,
+  Minimize2,
+  Wrench,
+  FileSearch,
+  Image,
+  FileText,
+  Table2,
+  Presentation,
+  Globe,
+  FileImage,
+  FileType,
+  Sheet,
+  FileCheck,
+  RotateCw,
+  Hash,
+  Droplets,
+  Crop,
+  PenTool,
+  Unlock,
+  Lock,
+  PenLine,
+  EyeOff,
+  GitCompare,
+  LucideIcon,
+} from 'lucide-react';
+
+export type ToolCategory = 'organize' | 'optimize' | 'convert-to' | 'convert-from' | 'edit' | 'security';
+
+export interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  icon: LucideIcon;
+  category: ToolCategory;
+  path: string;
+  accepts: string[];
+  comingSoon?: boolean;
+}
+
+export interface ToolCategoryInfo {
+  id: ToolCategory;
+  name: string;
+  description: string;
+  color: string;
+}
+
+export const toolCategories: ToolCategoryInfo[] = [
+  { id: 'organize', name: 'Organize PDF', description: 'Merge, split, and organize your PDF pages', color: 'organize' },
+  { id: 'optimize', name: 'Optimize PDF', description: 'Compress and enhance your PDF files', color: 'optimize' },
+  { id: 'convert-to', name: 'Convert to PDF', description: 'Convert various formats to PDF', color: 'convert-to' },
+  { id: 'convert-from', name: 'Convert from PDF', description: 'Export your PDF to other formats', color: 'convert-from' },
+  { id: 'edit', name: 'Edit PDF', description: 'Modify and enhance your PDF documents', color: 'edit' },
+  { id: 'security', name: 'PDF Security', description: 'Protect and secure your PDF files', color: 'security' },
+];
+
+export const tools: Tool[] = [
+  // Organize
+  {
+    id: 'merge',
+    name: 'Merge PDF',
+    description: 'Combine multiple PDFs into one document',
+    icon: FileStack,
+    category: 'organize',
+    path: '/tools/merge',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'split',
+    name: 'Split PDF',
+    description: 'Separate one PDF into multiple documents',
+    icon: Scissors,
+    category: 'organize',
+    path: '/tools/split',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'remove-pages',
+    name: 'Remove Pages',
+    description: 'Delete specific pages from your PDF',
+    icon: Trash2,
+    category: 'organize',
+    path: '/tools/remove-pages',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'extract-pages',
+    name: 'Extract Pages',
+    description: 'Extract specific pages to a new PDF',
+    icon: FileOutput,
+    category: 'organize',
+    path: '/tools/extract-pages',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'organize-pages',
+    name: 'Organize Pages',
+    description: 'Reorder, rotate, and delete pages',
+    icon: ArrowDownUp,
+    category: 'organize',
+    path: '/tools/organize-pages',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'scan-to-pdf',
+    name: 'Scan to PDF',
+    description: 'Use camera to scan documents to PDF',
+    icon: ScanLine,
+    category: 'organize',
+    path: '/tools/scan-to-pdf',
+    accepts: ['camera'],
+    comingSoon: true,
+  },
+
+  // Optimize
+  {
+    id: 'compress',
+    name: 'Compress PDF',
+    description: 'Reduce file size while maintaining quality',
+    icon: Minimize2,
+    category: 'optimize',
+    path: '/tools/compress',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'repair',
+    name: 'Repair PDF',
+    description: 'Fix corrupted or damaged PDF files',
+    icon: Wrench,
+    category: 'optimize',
+    path: '/tools/repair',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'ocr',
+    name: 'OCR PDF',
+    description: 'Make scanned PDFs searchable with OCR',
+    icon: FileSearch,
+    category: 'optimize',
+    path: '/tools/ocr',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+
+  // Convert to PDF
+  {
+    id: 'jpg-to-pdf',
+    name: 'JPG to PDF',
+    description: 'Convert JPG images to PDF document',
+    icon: Image,
+    category: 'convert-to',
+    path: '/tools/jpg-to-pdf',
+    accepts: ['.jpg', '.jpeg', '.png'],
+  },
+  {
+    id: 'word-to-pdf',
+    name: 'Word to PDF',
+    description: 'Convert Word documents to PDF',
+    icon: FileText,
+    category: 'convert-to',
+    path: '/tools/word-to-pdf',
+    accepts: ['.doc', '.docx'],
+    comingSoon: true,
+  },
+  {
+    id: 'excel-to-pdf',
+    name: 'Excel to PDF',
+    description: 'Convert Excel spreadsheets to PDF',
+    icon: Table2,
+    category: 'convert-to',
+    path: '/tools/excel-to-pdf',
+    accepts: ['.xls', '.xlsx'],
+    comingSoon: true,
+  },
+  {
+    id: 'ppt-to-pdf',
+    name: 'PPT to PDF',
+    description: 'Convert PowerPoint slides to PDF',
+    icon: Presentation,
+    category: 'convert-to',
+    path: '/tools/ppt-to-pdf',
+    accepts: ['.ppt', '.pptx'],
+    comingSoon: true,
+  },
+  {
+    id: 'html-to-pdf',
+    name: 'HTML to PDF',
+    description: 'Convert web pages to PDF',
+    icon: Globe,
+    category: 'convert-to',
+    path: '/tools/html-to-pdf',
+    accepts: ['.html', '.htm'],
+    comingSoon: true,
+  },
+
+  // Convert from PDF
+  {
+    id: 'pdf-to-jpg',
+    name: 'PDF to JPG',
+    description: 'Convert PDF pages to JPG images',
+    icon: FileImage,
+    category: 'convert-from',
+    path: '/tools/pdf-to-jpg',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'pdf-to-word',
+    name: 'PDF to Word',
+    description: 'Convert PDF to editable Word document',
+    icon: FileType,
+    category: 'convert-from',
+    path: '/tools/pdf-to-word',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'pdf-to-excel',
+    name: 'PDF to Excel',
+    description: 'Convert PDF tables to Excel',
+    icon: Sheet,
+    category: 'convert-from',
+    path: '/tools/pdf-to-excel',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'pdf-to-pdfa',
+    name: 'PDF to PDF/A',
+    description: 'Convert to archival PDF format',
+    icon: FileCheck,
+    category: 'convert-from',
+    path: '/tools/pdf-to-pdfa',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+
+  // Edit
+  {
+    id: 'rotate',
+    name: 'Rotate PDF',
+    description: 'Rotate PDF pages to any angle',
+    icon: RotateCw,
+    category: 'edit',
+    path: '/tools/rotate',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'page-numbers',
+    name: 'Add Page Numbers',
+    description: 'Insert page numbers into your PDF',
+    icon: Hash,
+    category: 'edit',
+    path: '/tools/page-numbers',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'watermark',
+    name: 'Add Watermark',
+    description: 'Stamp text or image watermark on PDF',
+    icon: Droplets,
+    category: 'edit',
+    path: '/tools/watermark',
+    accepts: ['.pdf'],
+  },
+  {
+    id: 'crop',
+    name: 'Crop PDF',
+    description: 'Trim margins and resize PDF pages',
+    icon: Crop,
+    category: 'edit',
+    path: '/tools/crop',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'edit-pdf',
+    name: 'Edit PDF',
+    description: 'Add text, images, and shapes to PDF',
+    icon: PenTool,
+    category: 'edit',
+    path: '/tools/edit-pdf',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+
+  // Security
+  {
+    id: 'unlock',
+    name: 'Unlock PDF',
+    description: 'Remove password protection from PDF',
+    icon: Unlock,
+    category: 'security',
+    path: '/tools/unlock',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'protect',
+    name: 'Protect PDF',
+    description: 'Add password protection to your PDF',
+    icon: Lock,
+    category: 'security',
+    path: '/tools/protect',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'sign',
+    name: 'Sign PDF',
+    description: 'Add your signature to PDF documents',
+    icon: PenLine,
+    category: 'security',
+    path: '/tools/sign',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'redact',
+    name: 'Redact PDF',
+    description: 'Permanently remove sensitive content',
+    icon: EyeOff,
+    category: 'security',
+    path: '/tools/redact',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+  {
+    id: 'compare',
+    name: 'Compare PDFs',
+    description: 'Find differences between two PDFs',
+    icon: GitCompare,
+    category: 'security',
+    path: '/tools/compare',
+    accepts: ['.pdf'],
+    comingSoon: true,
+  },
+];
+
+export const getToolById = (id: string): Tool | undefined => tools.find(t => t.id === id);
+export const getToolsByCategory = (category: ToolCategory): Tool[] => tools.filter(t => t.category === category);
+export const getCategoryInfo = (category: ToolCategory): ToolCategoryInfo | undefined => 
+  toolCategories.find(c => c.id === category);
