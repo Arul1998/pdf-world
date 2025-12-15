@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Upload, FileText, X, AlertCircle } from 'lucide-react';
+import { Upload, FileText, X, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatFileSize, generateId, getPdfPageCount, generatePdfThumbnail, type PDFFile } from '@/lib/pdf-tools';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,8 @@ export const FileDropZone = ({
   hideFileList = false,
 }: FileDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingCount, setProcessingCount] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
   const processFiles = useCallback(async (newFiles: FileList | File[]) => {
@@ -43,9 +45,15 @@ export const FileDropZone = ({
       return;
     }
 
+    setIsProcessing(true);
+    setProcessingCount({ current: 0, total: fileArray.length });
+
     const processedFiles: PDFFile[] = [];
     
-    for (const file of fileArray) {
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+      setProcessingCount({ current: i + 1, total: fileArray.length });
+      
       // Validate file size
       if (file.size > maxSize) {
         setError(`File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}`);
@@ -78,6 +86,9 @@ export const FileDropZone = ({
 
       processedFiles.push(pdfFile);
     }
+
+    setIsProcessing(false);
+    setProcessingCount({ current: 0, total: 0 });
 
     if (multiple) {
       // New files added at the end, first selections stay first
@@ -158,6 +169,16 @@ export const FileDropZone = ({
           {files.length > 0 ? 'Add More Files' : 'Select Files'}
         </Button>
       </div>
+
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <div className="flex items-center justify-center gap-3 py-4 px-4 bg-primary/5 border border-primary/20 rounded-xl animate-fade-in">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm font-medium text-foreground">
+            Processing file {processingCount.current} of {processingCount.total}...
+          </span>
+        </div>
+      )}
 
       {/* Error Message */}
       {error && (
