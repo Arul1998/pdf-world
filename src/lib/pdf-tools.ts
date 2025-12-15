@@ -1,8 +1,11 @@
 import { PDFDocument, degrees, rgb, StandardFonts } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker for v5.x
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 export interface PDFFile {
   id: string;
@@ -50,7 +53,8 @@ export const getPdfPageCount = async (file: File): Promise<number> => {
 export const generatePdfThumbnail = async (file: File): Promise<string> => {
   try {
     const arrayBuffer = await readFileAsArrayBuffer(file);
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
     
     const scale = 0.5;
@@ -66,7 +70,8 @@ export const generatePdfThumbnail = async (file: File): Promise<string> => {
     await page.render({ canvasContext: context, viewport, canvas }).promise;
     
     return canvas.toDataURL('image/jpeg', 0.8);
-  } catch {
+  } catch (error) {
+    console.error('Failed to generate thumbnail:', error);
     return '';
   }
 };
