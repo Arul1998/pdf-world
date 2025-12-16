@@ -154,6 +154,9 @@ const OrganizePages = () => {
             files={files}
             onFilesChange={handleFilesChange}
             multiple={false}
+            hideFileList
+            buttonText="Select File"
+            buttonTextWithFiles="Change File"
           />
         )}
 
