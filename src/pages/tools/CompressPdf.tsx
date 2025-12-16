@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Minimize2, Download, Loader2 } from 'lucide-react';
+import { Minimize2, Download, Loader2, Check } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { compressPdf, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
+import { cn } from '@/lib/utils';
 
 interface CompressionResult {
   name: string;
@@ -13,11 +14,40 @@ interface CompressionResult {
   compressed: number;
 }
 
+type CompressionLevel = 'maximum' | 'balanced' | 'minimum';
+
+const compressionOptions: { 
+  id: CompressionLevel; 
+  title: string; 
+  description: string; 
+  color: string;
+}[] = [
+  { 
+    id: 'maximum', 
+    title: 'Maximum Compression', 
+    description: 'Smaller file size, reduced quality',
+    color: 'text-destructive'
+  },
+  { 
+    id: 'balanced', 
+    title: 'Balanced', 
+    description: 'Optimal balance of size and quality',
+    color: 'text-warning'
+  },
+  { 
+    id: 'minimum', 
+    title: 'Minimum Compression', 
+    description: 'Best quality, larger file size',
+    color: 'text-success'
+  },
+];
+
 const CompressPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CompressionResult[]>([]);
+  const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('balanced');
 
   const handleCompress = async () => {
     if (files.length === 0) {
@@ -90,6 +120,34 @@ const CompressPdf = () => {
           }}
           multiple={true}
         />
+
+        {/* Compression Level Options */}
+        <div className="space-y-2">
+          {compressionOptions.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => setCompressionLevel(option.id)}
+              className={cn(
+                "w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left",
+                compressionLevel === option.id
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-muted-foreground/30 bg-card"
+              )}
+            >
+              <div>
+                <p className={cn("font-semibold uppercase text-sm tracking-wide", option.color)}>
+                  {option.title}
+                </p>
+                <p className="text-sm text-muted-foreground">{option.description}</p>
+              </div>
+              {compressionLevel === option.id && (
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="w-4 h-4 text-primary-foreground" />
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
 
         {isProcessing && (
           <ProgressBar progress={progress} />
