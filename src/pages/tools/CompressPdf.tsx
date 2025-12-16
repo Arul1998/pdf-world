@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minimize2, Download, Loader2, Check } from 'lucide-react';
+import { Minimize2, Download, Loader2, Check, X, FileText } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -48,6 +48,11 @@ const CompressPdf = () => {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<CompressionResult[]>([]);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('balanced');
+
+  const removeFile = (id: string) => {
+    setFiles(files.filter(f => f.id !== id));
+    setResults([]);
+  };
 
   const handleCompress = async () => {
     if (files.length === 0) {
@@ -119,7 +124,49 @@ const CompressPdf = () => {
             setResults([]);
           }}
           multiple={true}
+          hideFileList
         />
+
+        {/* Selected Files Preview */}
+        {files.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {files.map((file) => (
+              <div
+                key={file.id}
+                className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
+              >
+                {/* Remove button */}
+                <button
+                  onClick={() => removeFile(file.id)}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {/* Thumbnail */}
+                <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
+                  {file.thumbnail ? (
+                    <img
+                      src={file.thumbnail}
+                      alt={file.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <FileText className="w-10 h-10 text-muted-foreground" />
+                  )}
+                </div>
+
+                {/* File info */}
+                <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
+                  {file.name}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'} • {formatFileSize(file.size)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Compression Level Options */}
         <div className="space-y-2">
