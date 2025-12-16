@@ -13,6 +13,8 @@ interface FileDropZoneProps {
   onFilesChange: (files: PDFFile[]) => void;
   className?: string;
   hideFileList?: boolean;
+  buttonText?: string;
+  buttonTextWithFiles?: string;
 }
 
 export const FileDropZone = ({
@@ -24,6 +26,8 @@ export const FileDropZone = ({
   onFilesChange,
   className,
   hideFileList = false,
+  buttonText = 'Select Files',
+  buttonTextWithFiles = 'Add More Files',
 }: FileDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -166,7 +170,7 @@ export const FileDropZone = ({
         </div>
         
         <Button variant="outline" className="pointer-events-none">
-          {files.length > 0 ? 'Add More Files' : 'Select Files'}
+          {files.length > 0 ? buttonTextWithFiles : buttonText}
         </Button>
       </div>
 
