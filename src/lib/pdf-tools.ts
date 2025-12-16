@@ -156,14 +156,65 @@ export const rotatePages = async (file: File, rotation: 90 | 180 | 270, pageNumb
   return pdfDoc.save();
 };
 
-// Compress PDF (basic compression by removing metadata and optimizing)
-export const compressPdf = async (file: File): Promise<Uint8Array> => {
-  const arrayBuffer = await readFileAsArrayBuffer(file);
-  const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+// Compress PDF by re-rendering pages as images at specified quality
+export const compressPdf = async (
+  file: File, 
+  level: 'maximum' | 'balanced' | 'minimum' = 'balanced'
+): Promise<Uint8Array> => {
+  const qualityMap = {
+    maximum: 0.4,  // Lower quality = smaller size
+    balanced: 0.65,
+    minimum: 0.85, // Higher quality = larger size
+  };
   
-  return pdfDoc.save({
+  const scaleMap = {
+    maximum: 1.0,
+    balanced: 1.5,
+    minimum: 2.0,
+  };
+  
+  const quality = qualityMap[level];
+  const scale = scaleMap[level];
+  
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const numPages = pdf.numPages;
+  
+  const newPdfDoc = await PDFDocument.create();
+  
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) continue;
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    await page.render({ canvasContext: context, viewport, canvas }).promise;
+    
+    // Convert to JPEG with specified quality
+    const imageDataUrl = canvas.toDataURL('image/jpeg', quality);
+    const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
+    
+    const jpgImage = await newPdfDoc.embedJpg(imageBytes);
+    
+    // Get original page dimensions
+    const originalViewport = page.getViewport({ scale: 1 });
+    const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
+    
+    newPage.drawImage(jpgImage, {
+      x: 0,
+      y: 0,
+      width: originalViewport.width,
+      height: originalViewport.height,
+    });
+  }
+  
+  return newPdfDoc.save({
     useObjectStreams: true,
-    addDefaultPage: false,
   });
 };
 
