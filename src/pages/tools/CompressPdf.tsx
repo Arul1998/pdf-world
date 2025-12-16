@@ -7,40 +7,59 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { compressPdf, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
 
+interface CompressionResult {
+  name: string;
+  original: number;
+  compressed: number;
+}
+
 const CompressPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{ original: number; compressed: number } | null>(null);
+  const [results, setResults] = useState<CompressionResult[]>([]);
 
   const handleCompress = async () => {
     if (files.length === 0) {
-      toast.error('Please add a PDF file');
+      toast.error('Please add at least one PDF file');
       return;
     }
 
     setIsProcessing(true);
     setProgress(0);
-    setResult(null);
+    setResults([]);
 
     try {
-      setProgress(30);
-      const originalSize = files[0].size;
-      const compressed = await compressPdf(files[0].file);
-      setProgress(80);
+      const compressionResults: CompressionResult[] = [];
       
-      const compressedSize = compressed.length;
-      setResult({ original: originalSize, compressed: compressedSize });
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const originalSize = file.size;
+        const compressed = await compressPdf(file.file);
+        const compressedSize = compressed.length;
+        
+        const filename = file.name.replace('.pdf', '_compressed.pdf');
+        downloadBlob(compressed, filename);
+        
+        compressionResults.push({
+          name: file.name,
+          original: originalSize,
+          compressed: compressedSize,
+        });
+        
+        setProgress(((i + 1) / files.length) * 100);
+      }
       
-      const filename = files[0].name.replace('.pdf', '_compressed.pdf');
-      downloadBlob(compressed, filename);
-      setProgress(100);
+      setResults(compressionResults);
       
-      const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
-      if (compressedSize < originalSize) {
-        toast.success(`PDF compressed! Saved ${savings}%`);
+      const totalOriginal = compressionResults.reduce((sum, r) => sum + r.original, 0);
+      const totalCompressed = compressionResults.reduce((sum, r) => sum + r.compressed, 0);
+      const savings = ((1 - totalCompressed / totalOriginal) * 100).toFixed(1);
+      
+      if (totalCompressed < totalOriginal) {
+        toast.success(`${files.length} PDF${files.length > 1 ? 's' : ''} compressed! Saved ${savings}%`);
       } else {
-        toast.info('PDF is already optimized. Downloaded as-is.');
+        toast.info('PDFs are already optimized. Downloaded as-is.');
       }
     } catch (error) {
       console.error(error);
@@ -49,6 +68,9 @@ const CompressPdf = () => {
       setIsProcessing(false);
     }
   };
+
+  const totalOriginal = results.reduce((sum, r) => sum + r.original, 0);
+  const totalCompressed = results.reduce((sum, r) => sum + r.compressed, 0);
 
   return (
     <ToolLayout
@@ -63,40 +85,58 @@ const CompressPdf = () => {
           accept={['.pdf']}
           files={files}
           onFilesChange={(newFiles) => {
-            setFiles(newFiles.slice(0, 1));
-            setResult(null);
+            setFiles(newFiles);
+            setResults([]);
           }}
-          multiple={false}
-          hideFileList
-          buttonText="Select File"
-          buttonTextWithFiles="Change File"
+          multiple={true}
         />
 
         {isProcessing && (
           <ProgressBar progress={progress} />
         )}
 
-        {result && (
-          <div className="p-4 bg-success/10 border border-success/20 rounded-xl">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">Original</p>
-                <p className="text-lg font-semibold text-foreground">{formatFileSize(result.original)}</p>
+        {results.length > 0 && (
+          <div className="p-4 bg-success/10 border border-success/20 rounded-xl space-y-4">
+            {results.length > 1 && (
+              <div className="grid grid-cols-3 gap-4 text-center border-b border-success/20 pb-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Original</p>
+                  <p className="text-lg font-semibold text-foreground">{formatFileSize(totalOriginal)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Compressed</p>
+                  <p className="text-lg font-semibold text-success">{formatFileSize(totalCompressed)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Savings</p>
+                  <p className="text-lg font-semibold text-success">
+                    {totalCompressed < totalOriginal 
+                      ? `${((1 - totalCompressed / totalOriginal) * 100).toFixed(1)}%`
+                      : '0%'
+                    }
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Compressed</p>
-                <p className="text-lg font-semibold text-success">{formatFileSize(result.compressed)}</p>
+            )}
+            {results.map((result, index) => (
+              <div key={index} className="grid grid-cols-3 gap-4 text-center text-sm">
+                <div className="truncate" title={result.name}>
+                  <p className="text-xs text-muted-foreground">File</p>
+                  <p className="font-medium text-foreground truncate">{result.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">{formatFileSize(result.original)} → {formatFileSize(result.compressed)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    {result.compressed < result.original 
+                      ? <span className="text-success font-medium">-{((1 - result.compressed / result.original) * 100).toFixed(1)}%</span>
+                      : <span className="text-muted-foreground">0%</span>
+                    }
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Savings</p>
-                <p className="text-lg font-semibold text-success">
-                  {result.compressed < result.original 
-                    ? `${((1 - result.compressed / result.original) * 100).toFixed(1)}%`
-                    : '0%'
-                  }
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         )}
 
