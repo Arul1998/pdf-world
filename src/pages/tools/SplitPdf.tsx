@@ -249,29 +249,88 @@ const SplitPdf = () => {
         setProgressText('Splitting by size...');
         
         const maxBytes = maxSize * (sizeUnit === 'MB' ? 1024 * 1024 : 1024);
-        let currentPages: number[] = [];
-        let partIndex = 1;
+        const originalSize = files[0].size;
+        
+        // If file is already smaller than max size, inform user
+        if (originalSize <= maxBytes) {
+          toast.info(`File is already under ${maxSize} ${sizeUnit}. Splitting by individual pages instead.`);
+          // Split into individual pages
+          for (let i = 1; i <= pageCount; i++) {
+            const result = await extractPages(files[0].file, [i]);
+            let finalResult = result;
+            
+            if (allowCompression) {
+              const tempFile = new File([result.buffer.slice(0) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
+              finalResult = await compressPdf(tempFile);
+            }
+            
+            results.push({ 
+              data: finalResult, 
+              name: `${baseName}_page${i}.pdf` 
+            });
+            setProgress((i / pageCount) * 80);
+          }
+        } else {
+          let currentPages: number[] = [];
+          let partIndex = 1;
 
-        for (let i = 1; i <= pageCount; i++) {
-          currentPages.push(i);
-          
-          // Check size of current batch
-          const testResult = await extractPages(files[0].file, currentPages);
-          let finalResult = testResult;
-          
-          if (allowCompression) {
-            const tempFile = new File([testResult.buffer.slice(testResult.byteOffset, testResult.byteOffset + testResult.byteLength) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
-            finalResult = await compressPdf(tempFile);
+          for (let i = 1; i <= pageCount; i++) {
+            currentPages.push(i);
+            
+            // Check size of current batch
+            const testResult = await extractPages(files[0].file, currentPages);
+            let finalSize = testResult.length;
+            
+            if (allowCompression) {
+              const tempFile = new File([testResult.buffer.slice(0) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
+              const compressedTest = await compressPdf(tempFile);
+              finalSize = compressedTest.length;
+            }
+
+            if (finalSize > maxBytes) {
+              if (currentPages.length === 1) {
+                // Single page exceeds limit - save it anyway (can't split further)
+                let finalResult = testResult;
+                if (allowCompression) {
+                  const tempFile = new File([testResult.buffer.slice(0) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
+                  finalResult = await compressPdf(tempFile);
+                }
+                results.push({ 
+                  data: finalResult, 
+                  name: `${baseName}_part${partIndex}.pdf` 
+                });
+                partIndex++;
+                currentPages = [];
+              } else {
+                // Remove last page and save the rest
+                currentPages.pop();
+                const result = await extractPages(files[0].file, currentPages);
+                let compressedResult = result;
+                
+                if (allowCompression) {
+                  const tempFile = new File([result.buffer.slice(0) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
+                  compressedResult = await compressPdf(tempFile);
+                }
+                
+                results.push({ 
+                  data: compressedResult, 
+                  name: `${baseName}_part${partIndex}.pdf` 
+                });
+                partIndex++;
+                currentPages = [i]; // Start new batch with current page
+              }
+            }
+            
+            setProgress((i / pageCount) * 80);
           }
 
-          if (finalResult.length > maxBytes && currentPages.length > 1) {
-            // Remove last page and save
-            currentPages.pop();
+          // Save remaining pages
+          if (currentPages.length > 0) {
             const result = await extractPages(files[0].file, currentPages);
             let compressedResult = result;
             
             if (allowCompression) {
-              const tempFile = new File([result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
+              const tempFile = new File([result.buffer.slice(0) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
               compressedResult = await compressPdf(tempFile);
             }
             
@@ -279,27 +338,7 @@ const SplitPdf = () => {
               data: compressedResult, 
               name: `${baseName}_part${partIndex}.pdf` 
             });
-            partIndex++;
-            currentPages = [i];
           }
-          
-          setProgress((i / pageCount) * 80);
-        }
-
-        // Save remaining pages
-        if (currentPages.length > 0) {
-          const result = await extractPages(files[0].file, currentPages);
-          let compressedResult = result;
-          
-          if (allowCompression) {
-            const tempFile = new File([result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength) as ArrayBuffer], 'temp.pdf', { type: 'application/pdf' });
-            compressedResult = await compressPdf(tempFile);
-          }
-          
-          results.push({ 
-            data: compressedResult, 
-            name: `${baseName}_part${partIndex}.pdf` 
-          });
         }
       }
 
