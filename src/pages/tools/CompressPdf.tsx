@@ -67,6 +67,9 @@ const CompressPdf = () => {
             setResult(null);
           }}
           multiple={false}
+          hideFileList
+          buttonText="Select File"
+          buttonTextWithFiles="Change File"
         />
 
         {isProcessing && (

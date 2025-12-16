@@ -71,6 +71,9 @@ const PdfToJpg = () => {
             setImages([]);
           }}
           multiple={false}
+          hideFileList
+          buttonText="Select File"
+          buttonTextWithFiles="Change File"
         />
 
         {files.length > 0 && images.length === 0 && (

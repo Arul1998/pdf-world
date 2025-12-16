@@ -56,6 +56,9 @@ const RotatePdf = () => {
           files={files}
           onFilesChange={(newFiles) => setFiles(newFiles.slice(0, 1))}
           multiple={false}
+          hideFileList
+          buttonText="Select File"
+          buttonTextWithFiles="Change File"
         />
 
         {files.length > 0 && (
