@@ -565,13 +565,21 @@ const SplitPdf = () => {
                         <Input
                           type="number"
                           min={1}
+                          max={sizeUnit === 'MB' ? 500 : 500000}
                           value={maxSize}
-                          onChange={(e) => setMaxSize(parseInt(e.target.value) || 1)}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value) || 1;
+                            const maxVal = sizeUnit === 'MB' ? 500 : 500000;
+                            setMaxSize(Math.min(Math.max(1, val), maxVal));
+                          }}
                           className="flex-1"
                         />
                         <div className="flex rounded-md border border-input overflow-hidden">
                           <button
-                            onClick={() => setSizeUnit('KB')}
+                            onClick={() => {
+                              setSizeUnit('KB');
+                              setMaxSize(Math.min(maxSize, 500000));
+                            }}
                             className={cn(
                               "px-3 py-2 text-sm transition-colors",
                               sizeUnit === 'KB' 
@@ -582,7 +590,10 @@ const SplitPdf = () => {
                             KB
                           </button>
                           <button
-                            onClick={() => setSizeUnit('MB')}
+                            onClick={() => {
+                              setSizeUnit('MB');
+                              setMaxSize(Math.min(maxSize, 500));
+                            }}
                             className={cn(
                               "px-3 py-2 text-sm transition-colors",
                               sizeUnit === 'MB' 
