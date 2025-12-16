@@ -70,7 +70,7 @@ const CompressPdf = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const originalSize = file.size;
-        const compressed = await compressPdf(file.file);
+        const compressed = await compressPdf(file.file, compressionLevel);
         const compressedSize = compressed.length;
         
         const filename = file.name.replace('.pdf', '_compressed.pdf');
