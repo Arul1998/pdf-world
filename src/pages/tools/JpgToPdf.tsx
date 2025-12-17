@@ -1,18 +1,29 @@
-import { useState } from 'react';
-import { Image, Download, Loader2, RectangleVertical, RectangleHorizontal, ImageIcon, Square, Maximize } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Image, Download, Loader2, RectangleVertical, RectangleHorizontal, ImageIcon, Square } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { SortableImageCard } from '@/components/SortableImageCard';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { imageToPdf, downloadBlob, type PDFFile, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin } from '@/lib/pdf-tools';
+import { imageToPdf, downloadBlob, generateId, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin } from '@/lib/pdf-tools';
 import { cn } from '@/lib/utils';
 
+interface ImageFile {
+  id: string;
+  name: string;
+  file: File;
+  size: number;
+  thumbnail?: string;
+}
+
 const JpgToPdf = () => {
-  const [files, setFiles] = useState<PDFFile[]>([]);
+  const [files, setFiles] = useState<ImageFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   
@@ -21,6 +32,54 @@ const JpgToPdf = () => {
   const [pageSize, setPageSize] = useState<PageSize>('a4');
   const [margin, setMargin] = useState<PageMargin>('none');
   const [mergeAll, setMergeAll] = useState(true);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Generate thumbnails for uploaded files
+  const handleFilesChange = async (pdfFiles: any[]) => {
+    const imageFiles: ImageFile[] = await Promise.all(
+      pdfFiles.map(async (f) => {
+        const thumbnail = await generateImageThumbnail(f.file);
+        return {
+          id: f.id || generateId(),
+          name: f.name,
+          file: f.file,
+          size: f.size,
+          thumbnail,
+        };
+      })
+    );
+    setFiles(imageFiles);
+  };
+
+  const generateImageThumbnail = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        resolve(e.target?.result as string);
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setFiles((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleRemove = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+  };
 
   const handleConvert = async () => {
     if (files.length === 0) {
@@ -45,7 +104,6 @@ const JpgToPdf = () => {
         
         downloadBlob(pdf, filename);
       } else {
-        // Create separate PDFs for each image
         for (let i = 0; i < imageFiles.length; i++) {
           const pdf = await imageToPdf([imageFiles[i]], { pageSize, orientation, margin });
           const filename = files[i].name.replace(/\.(jpg|jpeg|png)$/i, '.pdf');
@@ -77,10 +135,39 @@ const JpgToPdf = () => {
       <div className="space-y-6">
         <FileDropZone
           accept={['.jpg', '.jpeg', '.png']}
-          files={files}
-          onFilesChange={setFiles}
+          files={files.map(f => ({ id: f.id, name: f.name, file: f.file, size: f.size, pageCount: 1 }))}
+          onFilesChange={handleFilesChange}
           multiple
+          hideFileList
         />
+
+        {/* Image Cards Grid with Drag & Drop */}
+        {files.length > 0 && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={files.map(f => f.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {files.map((file, index) => (
+                  <SortableImageCard
+                    key={file.id}
+                    file={file}
+                    index={index}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+
+        {files.length > 1 && (
+          <p className="text-xs text-muted-foreground text-center">
+            Drag to reorder images
+          </p>
+        )}
 
         {files.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6 bg-muted/30 rounded-xl border">
