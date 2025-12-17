@@ -159,7 +159,8 @@ export const rotatePages = async (file: File, rotation: 90 | 180 | 270, pageNumb
 // Compress PDF by re-rendering pages as images at specified quality
 export const compressPdf = async (
   file: File, 
-  level: 'maximum' | 'balanced' | 'minimum' = 'balanced'
+  level: 'maximum' | 'balanced' | 'minimum' = 'balanced',
+  onPageProgress?: (currentPage: number, totalPages: number) => void
 ): Promise<Uint8Array> => {
   const qualityMap = {
     maximum: 0.4,  // Lower quality = smaller size
@@ -183,6 +184,8 @@ export const compressPdf = async (
   const newPdfDoc = await PDFDocument.create();
   
   for (let i = 1; i <= numPages; i++) {
+    onPageProgress?.(i, numPages);
+    
     const page = await pdf.getPage(i);
     const viewport = page.getViewport({ scale });
     
