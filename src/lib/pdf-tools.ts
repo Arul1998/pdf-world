@@ -285,9 +285,35 @@ export const addWatermark = async (
   return pdfDoc.save();
 };
 
+// Page size definitions in points (72 points = 1 inch)
+export const PAGE_SIZES = {
+  'fit': { width: 0, height: 0, label: 'Fit (Same page size as image)' },
+  'a4': { width: 595.28, height: 841.89, label: 'A4 (297x210 mm)' },
+  'letter': { width: 612, height: 792, label: 'US Letter (215x279.4 mm)' },
+} as const;
+
+export type PageSize = keyof typeof PAGE_SIZES;
+export type PageOrientation = 'portrait' | 'landscape';
+export type PageMargin = 'none' | 'small' | 'big';
+
+const MARGIN_VALUES = {
+  'none': 0,
+  'small': 20,
+  'big': 50,
+};
+
 // Convert image to PDF
-export const imageToPdf = async (files: File[]): Promise<Uint8Array> => {
+export const imageToPdf = async (
+  files: File[],
+  options: {
+    pageSize?: PageSize;
+    orientation?: PageOrientation;
+    margin?: PageMargin;
+  } = {}
+): Promise<Uint8Array> => {
+  const { pageSize = 'fit', orientation = 'portrait', margin = 'none' } = options;
   const pdfDoc = await PDFDocument.create();
+  const marginValue = MARGIN_VALUES[margin];
   
   for (const file of files) {
     const imageBytes = await readFileAsArrayBuffer(file);
@@ -301,12 +327,51 @@ export const imageToPdf = async (files: File[]): Promise<Uint8Array> => {
       continue;
     }
     
-    const page = pdfDoc.addPage([image.width, image.height]);
+    let pageWidth: number;
+    let pageHeight: number;
+    
+    if (pageSize === 'fit') {
+      pageWidth = image.width + marginValue * 2;
+      pageHeight = image.height + marginValue * 2;
+    } else {
+      const size = PAGE_SIZES[pageSize];
+      if (orientation === 'landscape') {
+        pageWidth = size.height;
+        pageHeight = size.width;
+      } else {
+        pageWidth = size.width;
+        pageHeight = size.height;
+      }
+    }
+    
+    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+    
+    // Calculate image dimensions to fit within margins
+    const availableWidth = pageWidth - marginValue * 2;
+    const availableHeight = pageHeight - marginValue * 2;
+    
+    let drawWidth = image.width;
+    let drawHeight = image.height;
+    
+    if (pageSize !== 'fit') {
+      // Scale image to fit within available space while maintaining aspect ratio
+      const scaleX = availableWidth / image.width;
+      const scaleY = availableHeight / image.height;
+      const scale = Math.min(scaleX, scaleY);
+      
+      drawWidth = image.width * scale;
+      drawHeight = image.height * scale;
+    }
+    
+    // Center the image on the page
+    const x = marginValue + (availableWidth - drawWidth) / 2;
+    const y = marginValue + (availableHeight - drawHeight) / 2;
+    
     page.drawImage(image, {
-      x: 0,
-      y: 0,
-      width: image.width,
-      height: image.height,
+      x,
+      y,
+      width: drawWidth,
+      height: drawHeight,
     });
   }
   
