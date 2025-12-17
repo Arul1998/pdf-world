@@ -46,6 +46,7 @@ const CompressPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [results, setResults] = useState<CompressionResult[]>([]);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('balanced');
 
@@ -68,6 +69,7 @@ const CompressPdf = () => {
       const compressionResults: CompressionResult[] = [];
       
       for (let i = 0; i < files.length; i++) {
+        setCurrentFileIndex(i);
         const file = files[i];
         const originalSize = file.size;
         const compressed = await compressPdf(file.file, compressionLevel);
@@ -197,7 +199,12 @@ const CompressPdf = () => {
         </div>
 
         {isProcessing && (
-          <ProgressBar progress={progress} />
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground text-center">
+              Compressing file {currentFileIndex + 1} of {files.length}...
+            </p>
+            <ProgressBar progress={progress} />
+          </div>
         )}
 
         {results.length > 0 && (
