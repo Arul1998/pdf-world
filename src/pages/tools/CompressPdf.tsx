@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Minimize2, Download, Loader2, Check, X, FileText } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -7,11 +7,13 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { compressPdf, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
 import { cn } from '@/lib/utils';
+import JSZip from 'jszip';
 
 interface CompressionResult {
   name: string;
   original: number;
   compressed: number;
+  data?: Uint8Array;
 }
 
 type CompressionLevel = 'maximum' | 'balanced' | 'minimum';
@@ -49,12 +51,27 @@ const CompressPdf = () => {
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [estimatedTimeLeft, setEstimatedTimeLeft] = useState<string>('');
   const [results, setResults] = useState<CompressionResult[]>([]);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('balanced');
+  
+  const pageTimesRef = useRef<number[]>([]);
+  const lastPageTimeRef = useRef<number>(0);
 
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
     setResults([]);
+  };
+
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) return `${Math.ceil(seconds)}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.ceil(seconds % 60);
+    return `${mins}m ${secs}s`;
+  };
+
+  const calculateTotalPages = (): number => {
+    return files.reduce((sum, f) => sum + (f.pageCount || 0), 0);
   };
 
   const handleCompress = async () => {
@@ -66,9 +83,14 @@ const CompressPdf = () => {
     setIsProcessing(true);
     setProgress(0);
     setResults([]);
+    setEstimatedTimeLeft('');
+    pageTimesRef.current = [];
+    lastPageTimeRef.current = Date.now();
 
     try {
       const compressionResults: CompressionResult[] = [];
+      const totalPagesAll = calculateTotalPages();
+      let pagesProcessed = 0;
       
       for (let i = 0; i < files.length; i++) {
         setCurrentFileIndex(i);
@@ -78,22 +100,63 @@ const CompressPdf = () => {
         const compressed = await compressPdf(file.file, compressionLevel, (page, total) => {
           setCurrentPage(page);
           setTotalPages(total);
+          
+          // Track time per page for estimation
+          const now = Date.now();
+          const pageTime = now - lastPageTimeRef.current;
+          lastPageTimeRef.current = now;
+          
+          if (page > 1) {
+            pageTimesRef.current.push(pageTime);
+            // Keep last 10 samples for smoother average
+            if (pageTimesRef.current.length > 10) {
+              pageTimesRef.current.shift();
+            }
+            
+            const avgTimePerPage = pageTimesRef.current.reduce((a, b) => a + b, 0) / pageTimesRef.current.length;
+            const remainingPages = totalPagesAll - pagesProcessed - page;
+            const estimatedMs = remainingPages * avgTimePerPage;
+            setEstimatedTimeLeft(formatTime(estimatedMs / 1000));
+          }
         });
-        const compressedSize = compressed.length;
         
-        const filename = file.name.replace('.pdf', '_compressed.pdf');
-        downloadBlob(compressed, filename);
+        pagesProcessed += file.pageCount || 0;
+        const compressedSize = compressed.length;
         
         compressionResults.push({
           name: file.name,
           original: originalSize,
           compressed: compressedSize,
+          data: compressed,
         });
         
         setProgress(((i + 1) / files.length) * 100);
       }
       
-      setResults(compressionResults);
+      // Download: zip if multiple files, otherwise single file
+      if (compressionResults.length > 1) {
+        const zip = new JSZip();
+        compressionResults.forEach((result) => {
+          const filename = result.name.replace('.pdf', '_compressed.pdf');
+          zip.file(filename, result.data!);
+        });
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'compressed_pdfs.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else if (compressionResults.length === 1) {
+        const result = compressionResults[0];
+        const filename = result.name.replace('.pdf', '_compressed.pdf');
+        downloadBlob(result.data!, filename);
+      }
+      
+      // Clear data from results to free memory
+      setResults(compressionResults.map(r => ({ ...r, data: undefined })));
       
       const totalOriginal = compressionResults.reduce((sum, r) => sum + r.original, 0);
       const totalCompressed = compressionResults.reduce((sum, r) => sum + r.compressed, 0);
@@ -109,6 +172,7 @@ const CompressPdf = () => {
       toast.error('Failed to compress PDF. Please try again.');
     } finally {
       setIsProcessing(false);
+      setEstimatedTimeLeft('');
     }
   };
 
@@ -209,6 +273,7 @@ const CompressPdf = () => {
             <p className="text-sm text-muted-foreground text-center">
               Compressing file {currentFileIndex + 1} of {files.length}
               {totalPages > 0 && ` — Page ${currentPage} of ${totalPages}`}
+              {estimatedTimeLeft && ` — ~${estimatedTimeLeft} remaining`}
             </p>
             <ProgressBar progress={progress} />
           </div>
