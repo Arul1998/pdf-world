@@ -1,19 +1,23 @@
 import { useState } from 'react';
-import { RotateCw, Download, Loader2, FileText } from 'lucide-react';
+import { RotateCw, RotateCcw, Download, Loader2, FileText } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import { rotatePages, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 
 const RotatePdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [rotation, setRotation] = useState<'90' | '180' | '270'>('90');
+  const [rotation, setRotation] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const rotateLeft = () => setRotation((prev) => prev - 90);
+  const rotateRight = () => setRotation((prev) => prev + 90);
+
+  // Normalize rotation to 0, 90, 180, or 270 for the actual PDF operation
+  const normalizedRotation = ((rotation % 360) + 360) % 360;
 
   const handleRotate = async () => {
     if (files.length === 0) {
@@ -21,14 +25,19 @@ const RotatePdf = () => {
       return;
     }
 
+    if (normalizedRotation === 0) {
+      toast.error('Please rotate the PDF first');
+      return;
+    }
+
     setIsProcessing(true);
     setProgress(30);
 
     try {
-      const rotated = await rotatePages(files[0].file, parseInt(rotation) as 90 | 180 | 270);
+      const rotated = await rotatePages(files[0].file, normalizedRotation as 90 | 180 | 270);
       setProgress(80);
       
-      const filename = files[0].name.replace('.pdf', `_rotated_${rotation}.pdf`);
+      const filename = files[0].name.replace('.pdf', `_rotated_${normalizedRotation}.pdf`);
       downloadBlob(rotated, filename);
       setProgress(100);
       
@@ -42,12 +51,10 @@ const RotatePdf = () => {
     }
   };
 
-  const rotationDegrees = parseInt(rotation);
-
   return (
     <ToolLayout
       title="Rotate PDF"
-      description="Rotate all pages of a PDF by 90°, 180°, or 270°."
+      description="Rotate all pages of a PDF by clicking left or right."
       icon={RotateCw}
       category="edit"
       categoryColor="edit"
@@ -56,7 +63,10 @@ const RotatePdf = () => {
         <FileDropZone
           accept={['.pdf']}
           files={files}
-          onFilesChange={(newFiles) => setFiles(newFiles.slice(0, 1))}
+          onFilesChange={(newFiles) => {
+            setFiles(newFiles.slice(0, 1));
+            setRotation(0);
+          }}
           multiple={false}
           hideFileList
           buttonText="Select File"
@@ -70,8 +80,8 @@ const RotatePdf = () => {
               <p className="text-sm text-muted-foreground">Preview</p>
               <div className="relative w-48 h-64 flex items-center justify-center bg-muted/30 rounded-xl overflow-hidden">
                 <div 
-                  className="transition-transform duration-500 ease-out"
-                  style={{ transform: `rotate(${rotationDegrees}deg)` }}
+                  className="transition-transform duration-300 ease-out"
+                  style={{ transform: `rotate(${rotation}deg)` }}
                 >
                   {files[0].thumbnail ? (
                     <img
@@ -91,32 +101,29 @@ const RotatePdf = () => {
               </p>
             </div>
 
-            {/* Rotation options */}
-            <div className="p-4 bg-muted/50 rounded-xl space-y-4">
-              <Label>Rotation angle</Label>
-              <RadioGroup value={rotation} onValueChange={(v) => setRotation(v as typeof rotation)}>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { value: '90', label: '90° Right', icon: '↻' },
-                    { value: '180', label: '180°', icon: '↕' },
-                    { value: '270', label: '90° Left', icon: '↺' },
-                  ].map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
-                        rotation === option.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <RadioGroupItem value={option.value} className="sr-only" />
-                      <span className="text-2xl">{option.icon}</span>
-                      <span className="text-sm font-medium">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </RadioGroup>
+            {/* Rotation buttons */}
+            <div className="flex items-center justify-center gap-6">
+              <button
+                onClick={rotateLeft}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <RotateCcw className="w-8 h-8 text-foreground" />
+                <span className="text-sm font-medium">Rotate Left</span>
+              </button>
+              <button
+                onClick={rotateRight}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-border hover:border-primary hover:bg-primary/5 transition-colors"
+              >
+                <RotateCw className="w-8 h-8 text-foreground" />
+                <span className="text-sm font-medium">Rotate Right</span>
+              </button>
             </div>
+
+            {normalizedRotation !== 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                Rotation: {normalizedRotation}°
+              </p>
+            )}
           </div>
         )}
 
@@ -126,7 +133,7 @@ const RotatePdf = () => {
 
         <Button
           onClick={handleRotate}
-          disabled={files.length === 0 || isProcessing}
+          disabled={files.length === 0 || isProcessing || normalizedRotation === 0}
           size="lg"
           className="w-full"
         >
