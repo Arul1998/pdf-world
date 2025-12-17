@@ -157,22 +157,20 @@ export const rotatePages = async (file: File, rotation: 90 | 180 | 270, pageNumb
 };
 
 // Compress PDF by re-rendering pages as images at specified quality
-export const compressPdf = async ( 
+export const compressPdf = async (
   file: File, 
-  level: 'maximum' | 'balanced' | 'minimum' = 'balanced',
-  onPageProgress?: (currentPage: number, totalPages: number) => void
+  level: 'maximum' | 'balanced' | 'minimum' = 'balanced'
 ): Promise<Uint8Array> => {
   const qualityMap = {
-    maximum: 0.3,  // Lower quality = smaller size
-    balanced: 0.5,
-    minimum: 0.7, // Higher quality = larger size
+    maximum: 0.4,  // Lower quality = smaller size
+    balanced: 0.65,
+    minimum: 0.85, // Higher quality = larger size
   };
   
-  // Much lower scales for faster processing
   const scaleMap = {
-    maximum: 0.5,
-    balanced: 0.75,
-    minimum: 1.0,
+    maximum: 1.0,
+    balanced: 1.5,
+    minimum: 2.0,
   };
   
   const quality = qualityMap[level];
@@ -184,23 +182,16 @@ export const compressPdf = async (
   
   const newPdfDoc = await PDFDocument.create();
   
-  // Reuse canvas for better performance
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  
   for (let i = 1; i <= numPages; i++) {
-    onPageProgress?.(i, numPages);
-    
     const page = await pdf.getPage(i);
     const viewport = page.getViewport({ scale });
     
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
     if (!context) continue;
     
     canvas.width = viewport.width;
     canvas.height = viewport.height;
-    
-    // Clear canvas before rendering
-    context.clearRect(0, 0, canvas.width, canvas.height);
     
     await page.render({ canvasContext: context, viewport, canvas }).promise;
     
