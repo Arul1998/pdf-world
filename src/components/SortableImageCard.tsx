@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X, ImageIcon } from 'lucide-react';
-import { formatFileSize } from '@/lib/pdf-tools';
+import { formatFileSize, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin } from '@/lib/pdf-tools';
 
 interface ImageFile {
   id: string;
@@ -15,12 +15,18 @@ interface SortableImageCardProps {
   file: ImageFile;
   index: number;
   onRemove: (id: string) => void;
+  orientation?: PageOrientation;
+  pageSize?: PageSize;
+  margin?: PageMargin;
 }
 
 export const SortableImageCard = ({
   file,
   index,
   onRemove,
+  orientation = 'portrait',
+  pageSize = 'a4',
+  margin = 'none',
 }: SortableImageCardProps) => {
   const {
     attributes,
@@ -34,6 +40,20 @@ export const SortableImageCard = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  // Calculate margin for preview
+  const marginValues = { none: 0, small: 6, big: 12 };
+  const marginPx = marginValues[margin];
+
+  // Calculate aspect ratio for PDF page preview
+  const getAspectRatio = () => {
+    const size = PAGE_SIZES[pageSize];
+    if (pageSize === 'fit') {
+      return orientation === 'portrait' ? '3/4' : '4/3';
+    }
+    const ratio = size.width / size.height;
+    return orientation === 'portrait' ? `${ratio}` : `${1/ratio}`;
   };
 
   return (
@@ -75,22 +95,27 @@ export const SortableImageCard = ({
         </div>
       </div>
 
-      {/* Thumbnail */}
-      <div className="aspect-[3/4] bg-white flex items-center justify-center p-2">
-        {file.thumbnail ? (
-          <div className="relative w-full h-full rounded border border-border/30 overflow-hidden shadow-inner bg-white">
+      {/* PDF Page Preview */}
+      <div className="bg-muted/30 flex items-center justify-center p-3">
+        <div 
+          className="bg-background border border-border shadow-md flex items-center justify-center transition-all duration-300"
+          style={{ 
+            aspectRatio: getAspectRatio(),
+            width: orientation === 'portrait' ? '80%' : '95%',
+            padding: `${marginPx}px`
+          }}
+        >
+          {file.thumbnail ? (
             <img
               src={file.thumbnail}
               alt={`Preview of ${file.name}`}
-              className="w-full h-full object-contain"
+              className="max-w-full max-h-full object-contain"
               draggable={false}
             />
-          </div>
-        ) : (
-          <div className="w-full h-full rounded border border-border/30 bg-muted/20 flex items-center justify-center">
+          ) : (
             <ImageIcon className="h-12 w-12 text-muted-foreground/30" />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* File Info */}
