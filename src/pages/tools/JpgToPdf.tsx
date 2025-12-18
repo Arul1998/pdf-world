@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, Download, Loader2, RectangleVertical, RectangleHorizontal, ImageIcon, Square } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
+import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { SortableImageCard } from '@/components/SortableImageCard';
@@ -104,12 +105,25 @@ const JpgToPdf = () => {
         
         downloadBlob(pdf, filename);
       } else {
+        const zip = new JSZip();
+        const date = new Date().toISOString().split('T')[0];
+
         for (let i = 0; i < imageFiles.length; i++) {
           const pdf = await imageToPdf([imageFiles[i]], { pageSize, orientation, margin });
           const filename = files[i].name.replace(/\.(jpg|jpeg|png)$/i, '.pdf');
-          downloadBlob(pdf, filename);
+          zip.file(filename, pdf);
           setProgress(30 + (50 * (i + 1) / imageFiles.length));
         }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `images_${date}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
       }
       
       setProgress(100);
