@@ -128,12 +128,7 @@ const PdfToJpg = () => {
           </Button>
         ) : (
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm font-medium">{images.length} images ready</p>
-              <Button onClick={downloadAll} size="sm">
-                Download All
-              </Button>
-            </div>
+            <p className="text-sm font-medium text-center">{images.length} images ready</p>
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {images.map((img, index) => (
@@ -162,15 +157,9 @@ const PdfToJpg = () => {
               ))}
             </div>
             
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFiles([]);
-                setImages([]);
-              }}
-              className="w-full"
-            >
-              Convert Another PDF
+            <Button onClick={downloadAll} size="lg" className="w-full">
+              <Download className="mr-2 h-5 w-5" />
+              Download All
             </Button>
           </div>
         )}
