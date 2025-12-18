@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { Image, Download, Loader2, RectangleVertical, RectangleHorizontal, ImageIcon, Square } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
@@ -13,66 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { imageToPdf, downloadBlob, generateId, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin } from '@/lib/pdf-tools';
 import { cn } from '@/lib/utils';
-
-// PDF Preview Component
-const PdfPreview = ({ 
-  thumbnail, 
-  orientation, 
-  pageSize, 
-  margin 
-}: { 
-  thumbnail: string; 
-  orientation: PageOrientation; 
-  pageSize: PageSize; 
-  margin: PageMargin;
-}) => {
-  const marginValues = { none: 0, small: 8, big: 16 };
-  const marginPx = marginValues[margin];
-  
-  // Calculate aspect ratio based on page size and orientation
-  const getPageDimensions = () => {
-    const size = PAGE_SIZES[pageSize];
-    if (pageSize === 'fit') {
-      return orientation === 'portrait' ? { width: 150, height: 200 } : { width: 200, height: 150 };
-    }
-    const ratio = size.width / size.height;
-    const baseHeight = 200;
-    if (orientation === 'portrait') {
-      return { width: baseHeight * ratio, height: baseHeight };
-    } else {
-      return { width: baseHeight, height: baseHeight * ratio };
-    }
-  };
-  
-  const { width, height } = getPageDimensions();
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <span className="text-xs font-medium text-muted-foreground">Preview</span>
-      <div 
-        className="bg-background border-2 border-border rounded shadow-lg flex items-center justify-center transition-all duration-300"
-        style={{ 
-          width: `${width}px`, 
-          height: `${height}px`,
-          padding: `${marginPx}px`
-        }}
-      >
-        <img 
-          src={thumbnail} 
-          alt="Preview" 
-          className="max-w-full max-h-full object-contain rounded-sm"
-          style={{
-            maxWidth: `calc(100% - ${marginPx * 2}px)`,
-            maxHeight: `calc(100% - ${marginPx * 2}px)`
-          }}
-        />
-      </div>
-      <span className="text-xs text-muted-foreground">
-        {PAGE_SIZES[pageSize].label} • {orientation === 'portrait' ? 'Portrait' : 'Landscape'}
-      </span>
-    </div>
-  );
-};
 
 interface ImageFile {
   id: string;
@@ -201,7 +141,7 @@ const JpgToPdf = () => {
           hideFileList
         />
 
-        {/* Image Cards Grid with Drag & Drop */}
+        {/* Image Cards Grid with Live PDF Preview */}
         {files.length > 0 && (
           <DndContext
             sensors={sensors}
@@ -216,6 +156,9 @@ const JpgToPdf = () => {
                     file={file}
                     index={index}
                     onRemove={handleRemove}
+                    orientation={orientation}
+                    pageSize={pageSize}
+                    margin={margin}
                   />
                 ))}
               </div>
@@ -230,116 +173,101 @@ const JpgToPdf = () => {
         )}
 
         {files.length > 0 && (
-          <div className="flex flex-col lg:flex-row gap-6 p-6 bg-muted/30 rounded-xl border">
-            {/* Options Grid */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Page Orientation */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Page orientation</Label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setOrientation('portrait')}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
-                      orientation === 'portrait'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted-foreground/50"
-                    )}
-                  >
-                    <RectangleVertical className="h-8 w-8" />
-                    <span className="text-xs font-medium">Portrait</span>
-                  </button>
-                  <button
-                    onClick={() => setOrientation('landscape')}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
-                      orientation === 'landscape'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted-foreground/50"
-                    )}
-                  >
-                    <RectangleHorizontal className="h-8 w-8" />
-                    <span className="text-xs font-medium">Landscape</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Page Size */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Page size</Label>
-                <Select value={pageSize} onValueChange={(v) => setPageSize(v as PageSize)}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PAGE_SIZES).map(([key, { label }]) => (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Margin */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">Margin</Label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setMargin('none')}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
-                      margin === 'none'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted-foreground/50"
-                    )}
-                  >
-                    <ImageIcon className="h-6 w-6" />
-                    <span className="text-xs font-medium">No margin</span>
-                  </button>
-                  <button
-                    onClick={() => setMargin('small')}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
-                      margin === 'small'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted-foreground/50"
-                    )}
-                  >
-                    <div className="h-6 w-6 border-2 border-current rounded flex items-center justify-center">
-                      <Square className="h-4 w-4" />
-                    </div>
-                    <span className="text-xs font-medium">Small</span>
-                  </button>
-                  <button
-                    onClick={() => setMargin('big')}
-                    className={cn(
-                      "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
-                      margin === 'big'
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-muted-foreground/50"
-                    )}
-                  >
-                    <div className="h-6 w-6 border-2 border-current rounded flex items-center justify-center">
-                      <Square className="h-3 w-3" />
-                    </div>
-                    <span className="text-xs font-medium">Big</span>
-                  </button>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-muted/30 rounded-xl border">
+            {/* Page Orientation */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Page orientation</Label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setOrientation('portrait')}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
+                    orientation === 'portrait'
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <RectangleVertical className="h-8 w-8" />
+                  <span className="text-xs font-medium">Portrait</span>
+                </button>
+                <button
+                  onClick={() => setOrientation('landscape')}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all",
+                    orientation === 'landscape'
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <RectangleHorizontal className="h-8 w-8" />
+                  <span className="text-xs font-medium">Landscape</span>
+                </button>
               </div>
             </div>
 
-            {/* Live Preview */}
-            {files[0]?.thumbnail && (
-              <div className="flex-shrink-0 flex justify-center lg:border-l lg:pl-6 pt-6 lg:pt-0 border-t lg:border-t-0">
-                <PdfPreview 
-                  thumbnail={files[0].thumbnail} 
-                  orientation={orientation} 
-                  pageSize={pageSize} 
-                  margin={margin} 
-                />
+            {/* Page Size */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Page size</Label>
+              <Select value={pageSize} onValueChange={(v) => setPageSize(v as PageSize)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(PAGE_SIZES).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Margin */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Margin</Label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setMargin('none')}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
+                    margin === 'none'
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <ImageIcon className="h-6 w-6" />
+                  <span className="text-xs font-medium">No margin</span>
+                </button>
+                <button
+                  onClick={() => setMargin('small')}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
+                    margin === 'small'
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <div className="h-6 w-6 border-2 border-current rounded flex items-center justify-center">
+                    <Square className="h-4 w-4" />
+                  </div>
+                  <span className="text-xs font-medium">Small</span>
+                </button>
+                <button
+                  onClick={() => setMargin('big')}
+                  className={cn(
+                    "flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
+                    margin === 'big'
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-muted-foreground/50"
+                  )}
+                >
+                  <div className="h-6 w-6 border-2 border-current rounded flex items-center justify-center">
+                    <Square className="h-3 w-3" />
+                  </div>
+                  <span className="text-xs font-medium">Big</span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
 
