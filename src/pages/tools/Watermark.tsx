@@ -189,22 +189,12 @@ const Watermark = () => {
     const rotationValue = parseInt(rotation);
     
     if (watermarkType === 'image' && imagePreview) {
-      if (isTileMode) {
-        return (
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="grid grid-cols-3 grid-rows-3 gap-2 w-full h-full p-2" style={{ opacity: opacityValue }}>
-              {Array(9).fill(0).map((_, i) => (
-                <img key={i} src={imagePreview} alt="" className="w-full h-full object-contain" />
-              ))}
-            </div>
-          </div>
-        );
-      }
+      // Image fills the entire page
       return (
         <img 
           src={imagePreview} 
           alt="Watermark" 
-          className="max-w-[40%] max-h-[40%] object-contain"
+          className="absolute inset-0 w-full h-full object-cover"
           style={{ opacity: opacityValue }}
         />
       );
@@ -296,7 +286,9 @@ const Watermark = () => {
                       <img src={thumb} alt={`Page ${idx + 1}`} className="w-full" />
                       {/* Watermark overlay preview */}
                       <div className="absolute inset-0">
-                        {effectivePosition === 'tile' ? (
+                        {watermarkType === 'image' ? (
+                          renderWatermarkPreview()
+                        ) : effectivePosition === 'tile' ? (
                           renderWatermarkPreview(true)
                         ) : (
                           <div style={getPositionStyle(effectivePosition)}>
@@ -444,66 +436,58 @@ const Watermark = () => {
                   className="hidden"
                 />
 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <Label>Image scale</Label>
-                    <span className="text-sm text-muted-foreground">{imageScale[0]}%</span>
-                  </div>
-                  <Slider
-                    value={imageScale}
-                    onValueChange={setImageScale}
-                    min={10}
-                    max={100}
-                    step={5}
-                  />
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  The image will be scaled to fit the entire page.
+                </p>
               </TabsContent>
             </Tabs>
 
-            {/* Position Section */}
+            {/* Position Section - Only for text watermarks */}
             <div className="space-y-4 p-4 bg-muted/50 rounded-xl">
-              <div className="space-y-3">
-                <Label>Position:</Label>
-                <div className="flex items-start gap-4">
-                  {/* 3x3 Position Grid */}
-                  <div className="grid grid-cols-3 gap-1 p-2 border border-border rounded-lg bg-card">
-                    {['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map((pos) => (
-                      <button
-                        key={pos}
-                        onClick={() => {
-                          setPosition(pos as WatermarkPosition);
-                          setIsMosaic(false);
-                        }}
-                        disabled={isMosaic}
-                        className={cn(
-                          "w-6 h-6 rounded transition-all flex items-center justify-center",
-                          !isMosaic && position === pos 
-                            ? "bg-destructive" 
-                            : "bg-muted hover:bg-muted-foreground/20",
-                          isMosaic && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <div 
+              {watermarkType === 'text' && (
+                <div className="space-y-3">
+                  <Label>Position:</Label>
+                  <div className="flex items-start gap-4">
+                    {/* 3x3 Position Grid */}
+                    <div className="grid grid-cols-3 gap-1 p-2 border border-border rounded-lg bg-card">
+                      {['top-left', 'top-center', 'top-right', 'center-left', 'center', 'center-right', 'bottom-left', 'bottom-center', 'bottom-right'].map((pos) => (
+                        <button
+                          key={pos}
+                          onClick={() => {
+                            setPosition(pos as WatermarkPosition);
+                            setIsMosaic(false);
+                          }}
+                          disabled={isMosaic}
                           className={cn(
-                            "w-2 h-2 rounded-full",
-                            !isMosaic && position === pos ? "bg-destructive-foreground" : "bg-muted-foreground/40"
+                            "w-6 h-6 rounded transition-all flex items-center justify-center",
+                            !isMosaic && position === pos 
+                              ? "bg-destructive" 
+                              : "bg-muted hover:bg-muted-foreground/20",
+                            isMosaic && "opacity-50 cursor-not-allowed"
                           )}
-                        />
-                      </button>
-                    ))}
-                  </div>
+                        >
+                          <div 
+                            className={cn(
+                              "w-2 h-2 rounded-full",
+                              !isMosaic && position === pos ? "bg-destructive-foreground" : "bg-muted-foreground/40"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
 
-                  {/* Mosaic Checkbox */}
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="mosaic"
-                      checked={isMosaic}
-                      onCheckedChange={(checked) => setIsMosaic(checked === true)}
-                    />
-                    <Label htmlFor="mosaic" className="cursor-pointer">Mosaic</Label>
+                    {/* Mosaic Checkbox */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="mosaic"
+                        checked={isMosaic}
+                        onCheckedChange={(checked) => setIsMosaic(checked === true)}
+                      />
+                      <Label htmlFor="mosaic" className="cursor-pointer">Mosaic</Label>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Transparency & Rotation Dropdowns */}
               <div className="grid grid-cols-2 gap-4">
