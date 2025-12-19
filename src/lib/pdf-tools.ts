@@ -76,6 +76,38 @@ export const generatePdfThumbnail = async (file: File): Promise<string> => {
   }
 };
 
+export const generatePdfPageThumbnails = async (file: File, scale: number = 0.3): Promise<string[]> => {
+  try {
+    const arrayBuffer = await readFileAsArrayBuffer(file);
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    const thumbnails: string[] = [];
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        thumbnails.push('');
+        continue;
+      }
+      
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      thumbnails.push(canvas.toDataURL('image/jpeg', 0.7));
+    }
+    
+    return thumbnails;
+  } catch (error) {
+    console.error('Failed to generate page thumbnails:', error);
+    return [];
+  }
+};
+
 // Merge PDFs
 export const mergePdfs = async (files: File[], onProgress?: (progress: number) => void): Promise<Uint8Array> => {
   const mergedPdf = await PDFDocument.create();
