@@ -21,6 +21,82 @@ const TEXT_FORMAT_OPTIONS: { value: TextFormat; label: string; format: string }[
   { value: 'custom', label: 'Custom', format: '' },
 ];
 
+interface PagePreviewProps {
+  position: Position;
+  margin: 'small' | 'recommended' | 'big';
+  format: string;
+  pageNumber: number;
+  totalPages: number;
+  isEvenPage?: boolean;
+  pageMode: 'single' | 'facing';
+}
+
+const PagePreview = ({ position, margin, format, pageNumber, totalPages, isEvenPage = false, pageMode }: PagePreviewProps) => {
+  const marginSizes = { small: 6, recommended: 12, big: 18 };
+  const marginPx = marginSizes[margin];
+  
+  const text = format
+    .replace('{n}', String(pageNumber))
+    .replace('{total}', String(totalPages))
+    .replace('{p}', String(totalPages));
+
+  // For facing pages mode, alternate left/right positions on even pages
+  let effectivePosition = position;
+  if (pageMode === 'facing' && isEvenPage) {
+    if (position.includes('left')) {
+      effectivePosition = position.replace('left', 'right') as Position;
+    } else if (position.includes('right')) {
+      effectivePosition = position.replace('right', 'left') as Position;
+    }
+  }
+
+  const getPositionStyles = (): React.CSSProperties => {
+    const styles: React.CSSProperties = {
+      position: 'absolute',
+      fontSize: '8px',
+      color: 'hsl(var(--muted-foreground))',
+    };
+
+    if (effectivePosition.includes('top')) {
+      styles.top = marginPx;
+    } else {
+      styles.bottom = marginPx;
+    }
+
+    if (effectivePosition.includes('left')) {
+      styles.left = marginPx;
+    } else if (effectivePosition.includes('center')) {
+      styles.left = '50%';
+      styles.transform = 'translateX(-50%)';
+    } else {
+      styles.right = marginPx;
+    }
+
+    return styles;
+  };
+
+  return (
+    <div 
+      className="relative bg-background border border-border rounded shadow-sm"
+      style={{ width: 80, height: 110, padding: 4 }}
+    >
+      {/* Page content lines */}
+      <div className="space-y-1 pt-2">
+        {[...Array(6)].map((_, i) => (
+          <div 
+            key={i} 
+            className="h-1 bg-muted rounded-full"
+            style={{ width: `${70 - i * 8}%` }}
+          />
+        ))}
+      </div>
+      
+      {/* Page number */}
+      <span style={getPositionStyles()}>{text}</span>
+    </div>
+  );
+};
+
 const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
@@ -50,6 +126,8 @@ const PageNumbers = () => {
     if (textFormat === 'custom') return customFormat;
     return TEXT_FORMAT_OPTIONS.find(opt => opt.value === textFormat)?.format || '{n}';
   };
+
+  const previewTotalPages = toPage - fromPage + 1;
 
   const handleAddNumbers = async () => {
     if (files.length === 0) {
@@ -118,6 +196,44 @@ const PageNumbers = () => {
 
         {files.length > 0 && (
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
+            {/* Live Preview */}
+            <div className="space-y-3">
+              <Label>Preview</Label>
+              <div className="flex justify-center gap-4 p-4 bg-muted rounded-lg">
+                {pageMode === 'single' ? (
+                  <PagePreview
+                    position={position}
+                    margin={margin}
+                    format={getFormat()}
+                    pageNumber={firstNumber}
+                    totalPages={previewTotalPages}
+                    pageMode={pageMode}
+                  />
+                ) : (
+                  <>
+                    <PagePreview
+                      position={position}
+                      margin={margin}
+                      format={getFormat()}
+                      pageNumber={firstNumber}
+                      totalPages={previewTotalPages}
+                      isEvenPage={false}
+                      pageMode={pageMode}
+                    />
+                    <PagePreview
+                      position={position}
+                      margin={margin}
+                      format={getFormat()}
+                      pageNumber={firstNumber + 1}
+                      totalPages={previewTotalPages}
+                      isEvenPage={true}
+                      pageMode={pageMode}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Page Mode */}
             <div className="space-y-3">
               <Label>Page mode</Label>
