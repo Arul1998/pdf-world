@@ -354,7 +354,7 @@ const PageNumbers = () => {
               </div>
 
               {/* Scrollable page previews - bigger */}
-              {selectedFile && (
+              {selectedFile && selectedFile.pageThumbnails && (
                 <div className="h-72 overflow-y-auto bg-muted rounded-xl p-4 border border-border">
                   <div className="flex flex-wrap gap-4 justify-center">
                     {Array.from({ length: selectedFile.pageCount }, (_, i) => {
@@ -383,7 +383,7 @@ const PageNumbers = () => {
                           format={getFormat()}
                           isInRange={isInRange}
                           isSkipped={isSkipped}
-                          thumbnail={selectedFile.pageThumbnails[i] || ''}
+                          thumbnail={selectedFile.pageThumbnails?.[i] || ''}
                           onClick={() => toggleSkipPage(pageNum)}
                         />
                       );
