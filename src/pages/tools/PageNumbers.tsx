@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
 import { addPageNumbers, downloadBlob, getPdfPageCount, generatePdfThumbnail, formatFileSize, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
 
 type Position = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
@@ -21,51 +22,57 @@ const TEXT_FORMAT_OPTIONS: { value: TextFormat; label: string; format: string }[
   { value: 'custom', label: 'Custom', format: '' },
 ];
 
-interface PagePreviewProps {
+interface PdfPreviewCardProps {
+  file: PDFFile;
+  thumbnail: string | null;
+  pageCount: number;
   position: Position;
   margin: 'small' | 'recommended' | 'big';
   format: string;
-  pageNumber: number;
+  firstNumber: number;
   totalPages: number;
-  isEvenPage?: boolean;
   pageMode: 'single' | 'facing';
+  onRemove: () => void;
 }
 
-const PagePreview = ({ position, margin, format, pageNumber, totalPages, isEvenPage = false, pageMode }: PagePreviewProps) => {
-  const marginSizes = { small: 6, recommended: 12, big: 18 };
+const PdfPreviewCard = ({ 
+  file, 
+  thumbnail, 
+  pageCount,
+  position, 
+  margin, 
+  format, 
+  firstNumber, 
+  totalPages,
+  pageMode,
+  onRemove 
+}: PdfPreviewCardProps) => {
+  const marginSizes = { small: 4, recommended: 8, big: 12 };
   const marginPx = marginSizes[margin];
   
   const text = format
-    .replace('{n}', String(pageNumber))
+    .replace('{n}', String(firstNumber))
     .replace('{total}', String(totalPages))
     .replace('{p}', String(totalPages));
-
-  // For facing pages mode, alternate left/right positions on even pages
-  let effectivePosition = position;
-  if (pageMode === 'facing' && isEvenPage) {
-    if (position.includes('left')) {
-      effectivePosition = position.replace('left', 'right') as Position;
-    } else if (position.includes('right')) {
-      effectivePosition = position.replace('right', 'left') as Position;
-    }
-  }
 
   const getPositionStyles = (): React.CSSProperties => {
     const styles: React.CSSProperties = {
       position: 'absolute',
-      fontSize: '8px',
-      color: 'hsl(var(--muted-foreground))',
+      fontSize: '7px',
+      color: 'hsl(var(--foreground))',
+      fontWeight: 500,
+      textShadow: '0 0 2px hsl(var(--background))',
     };
 
-    if (effectivePosition.includes('top')) {
+    if (position.includes('top')) {
       styles.top = marginPx;
     } else {
       styles.bottom = marginPx;
     }
 
-    if (effectivePosition.includes('left')) {
+    if (position.includes('left')) {
       styles.left = marginPx;
-    } else if (effectivePosition.includes('center')) {
+    } else if (position.includes('center')) {
       styles.left = '50%';
       styles.transform = 'translateX(-50%)';
     } else {
@@ -76,57 +83,95 @@ const PagePreview = ({ position, margin, format, pageNumber, totalPages, isEvenP
   };
 
   return (
-    <div 
-      className="relative bg-background border border-border rounded shadow-sm"
-      style={{ width: 80, height: 110, padding: 4 }}
-    >
-      {/* Page content lines */}
-      <div className="space-y-1 pt-2">
-        {[...Array(6)].map((_, i) => (
-          <div 
-            key={i} 
-            className="h-1 bg-muted rounded-full"
-            style={{ width: `${70 - i * 8}%` }}
+    <div className="group relative bg-background border border-border rounded-xl p-3 shadow-sm">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
+      >
+        <X className="h-3 w-3" />
+      </Button>
+      
+      {/* PDF Preview with page number overlay */}
+      <div className="relative w-24 h-32 mx-auto mb-2 bg-muted rounded border border-border overflow-hidden">
+        {thumbnail ? (
+          <img 
+            src={thumbnail} 
+            alt="PDF preview" 
+            className="w-full h-full object-cover"
           />
-        ))}
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+        )}
+        
+        {/* Page number overlay */}
+        <span style={getPositionStyles()}>{text}</span>
+        
+        {/* Facing pages indicator */}
+        {pageMode === 'facing' && (
+          <div className="absolute inset-0 flex">
+            <div className="w-1/2 border-r border-dashed border-muted-foreground/30" />
+          </div>
+        )}
       </div>
       
-      {/* Page number */}
-      <span style={getPositionStyles()}>{text}</span>
+      <div className="text-center">
+        <p className="text-xs font-medium truncate max-w-[100px]" title={file.name}>
+          {file.name}
+        </p>
+        <p className="text-[10px] text-muted-foreground">
+          {formatFileSize(file.file.size)} • {pageCount} pg
+        </p>
+      </div>
     </div>
   );
 };
 
+interface FileInfo {
+  file: PDFFile;
+  thumbnail: string | null;
+  pageCount: number;
+}
+
 const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
   const [position, setPosition] = useState<Position>('bottom-left');
   const [margin, setMargin] = useState<'small' | 'recommended' | 'big'>('recommended');
   const [firstNumber, setFirstNumber] = useState(1);
   const [fromPage, setFromPage] = useState(1);
   const [toPage, setToPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [textFormat, setTextFormat] = useState<TextFormat>('number');
   const [customFormat, setCustomFormat] = useState('Page {n} of {p}');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const loadPdfInfo = async () => {
-      if (files.length > 0) {
-        const count = await getPdfPageCount(files[0].file);
-        setTotalPages(count);
-        setToPage(count);
-        
-        // Generate thumbnail
-        const thumb = await generatePdfThumbnail(files[0].file);
-        setThumbnail(thumb);
-      } else {
-        setThumbnail(null);
+    const loadFileInfos = async () => {
+      const infos: FileInfo[] = await Promise.all(
+        files.map(async (file) => {
+          const pageCount = await getPdfPageCount(file.file);
+          const thumbnail = await generatePdfThumbnail(file.file);
+          return { file, thumbnail, pageCount };
+        })
+      );
+      setFileInfos(infos);
+      
+      // Set default toPage based on first file
+      if (infos.length > 0) {
+        setToPage(infos[0].pageCount);
       }
     };
-    loadPdfInfo();
+    
+    if (files.length > 0) {
+      loadFileInfos();
+    } else {
+      setFileInfos([]);
+    }
   }, [files]);
 
   const getFormat = () => {
@@ -136,14 +181,18 @@ const PageNumbers = () => {
 
   const previewTotalPages = toPage - fromPage + 1;
 
+  const handleRemoveFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddNumbers = async () => {
     if (files.length === 0) {
-      toast.error('Please add a PDF file');
+      toast.error('Please add PDF files');
       return;
     }
 
     setIsProcessing(true);
-    setProgress(30);
+    setProgress(10);
 
     try {
       const options: PageNumberOptions = {
@@ -155,14 +204,37 @@ const PageNumbers = () => {
         toPage,
         pageMode,
       };
-      
-      const result = await addPageNumbers(files[0].file, options);
-      setProgress(80);
-      
-      const filename = files[0].name.replace('.pdf', '_numbered.pdf');
-      downloadBlob(result, filename);
+
+      if (files.length === 1) {
+        const result = await addPageNumbers(files[0].file, options);
+        setProgress(80);
+        
+        const filename = files[0].name.replace('.pdf', '_numbered.pdf');
+        downloadBlob(result, filename);
+      } else {
+        // Multiple files - zip them
+        const zip = new JSZip();
+        const date = new Date().toISOString().split('T')[0];
+
+        for (let i = 0; i < files.length; i++) {
+          const result = await addPageNumbers(files[i].file, options);
+          const filename = files[i].name.replace('.pdf', '_numbered.pdf');
+          zip.file(filename, result);
+          setProgress(10 + (70 * (i + 1) / files.length));
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `numbered_pdfs_${date}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
       setProgress(100);
-      
       toast.success('Page numbers added successfully!');
     } catch (error) {
       console.error(error);
@@ -194,83 +266,34 @@ const PageNumbers = () => {
         <FileDropZone
           accept={['.pdf']}
           files={files}
-          onFilesChange={(newFiles) => setFiles(newFiles.slice(0, 1))}
-          multiple={false}
+          onFilesChange={setFiles}
+          multiple={true}
           hideFileList
-          buttonText="Select File"
-          buttonTextWithFiles="Change File"
+          buttonText="Select Files"
+          buttonTextWithFiles="Add More Files"
         />
 
         {files.length > 0 && (
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
-            {/* Uploaded PDF Preview */}
+            {/* Combined PDF Preview Cards */}
             <div className="space-y-3">
-              <Label>Uploaded PDF</Label>
-              <div className="flex items-center gap-4 p-3 bg-background border border-border rounded-lg">
-                {thumbnail ? (
-                  <img 
-                    src={thumbnail} 
-                    alt="PDF preview" 
-                    className="w-16 h-20 object-cover rounded border border-border shadow-sm"
-                  />
-                ) : (
-                  <div className="w-16 h-20 flex items-center justify-center bg-muted rounded border border-border">
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{files[0].name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatFileSize(files[0].file.size)} • {totalPages} {totalPages === 1 ? 'page' : 'pages'}
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setFiles([])}
-                  className="shrink-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Live Preview */}
-            {/* Live Preview */}
-            <div className="space-y-3">
-              <Label>Preview</Label>
-              <div className="flex justify-center gap-4 p-4 bg-muted rounded-lg">
-                {pageMode === 'single' ? (
-                  <PagePreview
+              <Label>Preview ({files.length} {files.length === 1 ? 'file' : 'files'})</Label>
+              <div className="flex flex-wrap gap-4 justify-center p-4 bg-muted rounded-lg">
+                {fileInfos.map((info, index) => (
+                  <PdfPreviewCard
+                    key={info.file.id}
+                    file={info.file}
+                    thumbnail={info.thumbnail}
+                    pageCount={info.pageCount}
                     position={position}
                     margin={margin}
                     format={getFormat()}
-                    pageNumber={firstNumber}
+                    firstNumber={firstNumber}
                     totalPages={previewTotalPages}
                     pageMode={pageMode}
+                    onRemove={() => handleRemoveFile(index)}
                   />
-                ) : (
-                  <>
-                    <PagePreview
-                      position={position}
-                      margin={margin}
-                      format={getFormat()}
-                      pageNumber={firstNumber}
-                      totalPages={previewTotalPages}
-                      isEvenPage={false}
-                      pageMode={pageMode}
-                    />
-                    <PagePreview
-                      position={position}
-                      margin={margin}
-                      format={getFormat()}
-                      pageNumber={firstNumber + 1}
-                      totalPages={previewTotalPages}
-                      isEvenPage={true}
-                      pageMode={pageMode}
-                    />
-                  </>
-                )}
+                ))}
               </div>
             </div>
 
@@ -359,10 +382,9 @@ const PageNumbers = () => {
                 <Input
                   type="number"
                   value={toPage}
-                  onChange={(e) => setToPage(Math.max(fromPage, Math.min(totalPages, parseInt(e.target.value) || totalPages)))}
+                  onChange={(e) => setToPage(Math.max(fromPage, parseInt(e.target.value) || 1))}
                   className="w-20 bg-background"
                   min={fromPage}
-                  max={totalPages}
                 />
               </div>
             </div>
@@ -418,7 +440,7 @@ const PageNumbers = () => {
           ) : (
             <>
               <Download className="mr-2 h-5 w-5" />
-              Add Page Numbers
+              Add Page Numbers {files.length > 1 && `(${files.length} files)`}
             </>
           )}
         </Button>
