@@ -554,78 +554,127 @@ const PageNumbers = () => {
                 <Label>Position:</Label>
                 {pageMode === 'facing' ? (
                   // Facing pages position selector - shows two pages side by side with dots
-                  <div className="flex gap-0.5 border border-border rounded-lg p-1.5 bg-background w-fit">
+                  <div className="flex border border-border rounded-lg p-2 bg-background w-fit shadow-sm">
                     {/* Left page */}
-                    <div className="grid grid-cols-3 gap-0.5 w-14 h-20 border border-dashed border-border rounded p-0.5 bg-muted/30">
+                    <div className="relative w-16 h-24 border border-dashed border-muted-foreground/40 rounded bg-muted/20 mr-1">
+                      {/* Page lines decoration */}
+                      <div className="absolute inset-3 space-y-1.5 opacity-30">
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-full" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-3/4" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-full" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-2/3" />
+                      </div>
+                      {/* Position dots for left page */}
                       {positionOptions.map((opt) => {
-                        // For left page in facing mode, show left positions
                         const showDot = (position.includes('left') && opt.value === position) ||
                           (position.includes('right') && opt.value === position.replace('right', 'left')) ||
                           (position.includes('center') && opt.value === position);
+                        
+                        const posStyles: React.CSSProperties = {
+                          position: 'absolute',
+                          ...(opt.value.includes('top') ? { top: 4 } : { bottom: 4 }),
+                          ...(opt.value.includes('left') ? { left: 4 } : 
+                             opt.value.includes('right') ? { right: 4 } : 
+                             { left: '50%', transform: 'translateX(-50%)' }),
+                        };
+                        
                         return (
                           <button
                             key={`left-${opt.value}`}
+                            style={posStyles}
                             onClick={() => {
-                              // Convert to the actual position
                               if (opt.value.includes('left')) setPosition(opt.value as Position);
                               else if (opt.value.includes('right')) setPosition(opt.value.replace('right', 'left') as Position);
                               else setPosition(opt.value as Position);
                             }}
-                            className={`rounded-full transition-all flex items-center justify-center ${
+                            className={`w-3 h-3 rounded-full transition-all border-2 ${
                               showDot
-                                ? 'bg-destructive'
-                                : 'hover:bg-muted-foreground/20'
+                                ? 'bg-destructive border-destructive shadow-md'
+                                : 'bg-background border-muted-foreground/40 hover:border-primary hover:bg-primary/20'
                             }`}
-                          >
-                            {showDot && <div className="w-2.5 h-2.5 rounded-full bg-destructive" />}
-                          </button>
+                            title={opt.value.replace('-', ' ')}
+                          />
                         );
                       })}
                     </div>
                     {/* Right page */}
-                    <div className="grid grid-cols-3 gap-0.5 w-14 h-20 border border-dashed border-border rounded p-0.5 bg-muted/30">
+                    <div className="relative w-16 h-24 border border-dashed border-muted-foreground/40 rounded bg-muted/20">
+                      {/* Page lines decoration */}
+                      <div className="absolute inset-3 space-y-1.5 opacity-30">
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-full" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-4/5" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-full" />
+                        <div className="h-0.5 bg-muted-foreground/30 rounded w-3/4" />
+                      </div>
+                      {/* Position dots for right page */}
                       {positionOptions.map((opt) => {
-                        // For right page in facing mode, show right positions (mirrored)
                         const showDot = (position.includes('right') && opt.value === position) ||
                           (position.includes('left') && opt.value === position.replace('left', 'right')) ||
                           (position.includes('center') && opt.value === position);
+                        
+                        const posStyles: React.CSSProperties = {
+                          position: 'absolute',
+                          ...(opt.value.includes('top') ? { top: 4 } : { bottom: 4 }),
+                          ...(opt.value.includes('left') ? { left: 4 } : 
+                             opt.value.includes('right') ? { right: 4 } : 
+                             { left: '50%', transform: 'translateX(-50%)' }),
+                        };
+                        
                         return (
                           <button
                             key={`right-${opt.value}`}
+                            style={posStyles}
                             onClick={() => {
-                              // Convert to the actual position
                               if (opt.value.includes('right')) setPosition(opt.value as Position);
                               else if (opt.value.includes('left')) setPosition(opt.value.replace('left', 'right') as Position);
                               else setPosition(opt.value as Position);
                             }}
-                            className={`rounded-full transition-all flex items-center justify-center ${
+                            className={`w-3 h-3 rounded-full transition-all border-2 ${
                               showDot
-                                ? 'bg-destructive'
-                                : 'hover:bg-muted-foreground/20'
+                                ? 'bg-destructive border-destructive shadow-md'
+                                : 'bg-background border-muted-foreground/40 hover:border-primary hover:bg-primary/20'
                             }`}
-                          >
-                            {showDot && <div className="w-2.5 h-2.5 rounded-full bg-destructive" />}
-                          </button>
+                            title={opt.value.replace('-', ' ')}
+                          />
                         );
                       })}
                     </div>
                   </div>
                 ) : (
                   // Single page position selector with red dot
-                  <div className="grid grid-cols-3 gap-1 w-24 h-16 border border-border rounded-lg p-1 bg-background">
-                    {positionOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setPosition(opt.value as Position)}
-                        className={`rounded-full transition-all flex items-center justify-center ${
-                          position === opt.value
-                            ? 'bg-destructive'
-                            : 'bg-muted hover:bg-muted-foreground/20 border border-dashed border-border'
-                        }`}
-                      >
-                        {position === opt.value && <div className="w-2 h-2 rounded-full bg-destructive" />}
-                      </button>
-                    ))}
+                  <div className="relative w-20 h-28 border border-border rounded-lg bg-background shadow-sm">
+                    {/* Page lines decoration */}
+                    <div className="absolute inset-4 space-y-1.5 opacity-30">
+                      <div className="h-0.5 bg-muted-foreground/30 rounded w-3/4" />
+                      <div className="h-0.5 bg-muted-foreground/30 rounded w-full" />
+                      <div className="h-0.5 bg-muted-foreground/30 rounded w-5/6" />
+                      <div className="h-0.5 bg-muted-foreground/30 rounded w-2/3" />
+                      <div className="h-0.5 bg-muted-foreground/30 rounded w-4/5" />
+                    </div>
+                    {/* Position dots */}
+                    {positionOptions.map((opt) => {
+                      const posStyles: React.CSSProperties = {
+                        position: 'absolute',
+                        ...(opt.value.includes('top') ? { top: 6 } : { bottom: 6 }),
+                        ...(opt.value.includes('left') ? { left: 6 } : 
+                           opt.value.includes('right') ? { right: 6 } : 
+                           { left: '50%', transform: 'translateX(-50%)' }),
+                      };
+                      
+                      return (
+                        <button
+                          key={opt.value}
+                          style={posStyles}
+                          onClick={() => setPosition(opt.value as Position)}
+                          className={`w-3.5 h-3.5 rounded-full transition-all border-2 ${
+                            position === opt.value
+                              ? 'bg-destructive border-destructive shadow-md'
+                              : 'bg-background border-muted-foreground/40 hover:border-primary hover:bg-primary/20'
+                          }`}
+                          title={opt.value.replace('-', ' ')}
+                        />
+                      );
+                    })}
                   </div>
                 )}
               </div>
