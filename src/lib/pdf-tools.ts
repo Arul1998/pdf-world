@@ -251,8 +251,8 @@ export const addPageNumbers = async (
   const pages = pdfDoc.getPages();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   
-  const marginSizes = { small: 20, recommended: 40, big: 60 };
-  const fontSizes = { small: 8, recommended: 10, big: 12 };
+  const marginSizes = { small: 25, recommended: 35, big: 50 };
+  const fontSizes = { small: 9, recommended: 10, big: 11 };
   const marginPx = marginSizes[margin];
   const fontSize = fontSizes[margin];
   
