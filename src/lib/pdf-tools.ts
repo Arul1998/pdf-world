@@ -331,36 +331,166 @@ export const addPageNumbers = async (
   return pdfDoc.save();
 };
 
-// Add watermark
+// Watermark position type
+export type WatermarkPosition = 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' | 'diagonal' | 'tile';
+
+export type WatermarkOptions = {
+  opacity?: number;
+  rotation?: number;
+  fontSize?: number;
+  position?: WatermarkPosition;
+  imageFile?: File;
+  imageScale?: number;
+};
+
+// Add watermark (text or image)
 export const addWatermark = async (
   file: File,
   text: string,
-  options: { opacity?: number; rotation?: number; fontSize?: number } = {}
+  options: WatermarkOptions = {}
 ): Promise<Uint8Array> => {
-  const { opacity = 0.3, rotation = -45, fontSize = 50 } = options;
+  const { 
+    opacity = 0.3, 
+    rotation = 0, 
+    fontSize = 50,
+    position = 'center',
+    imageFile,
+    imageScale = 0.3,
+  } = options;
   
   const arrayBuffer = await readFileAsArrayBuffer(file);
   const pdfDoc = await PDFDocument.load(arrayBuffer);
   const pages = pdfDoc.getPages();
   const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   
+  // If image watermark
+  let embeddedImage: Awaited<ReturnType<typeof pdfDoc.embedPng>> | null = null;
+  if (imageFile) {
+    const imageBytes = await readFileAsArrayBuffer(imageFile);
+    if (imageFile.type === 'image/png') {
+      embeddedImage = await pdfDoc.embedPng(imageBytes);
+    } else {
+      embeddedImage = await pdfDoc.embedJpg(imageBytes);
+    }
+  }
+  
   pages.forEach(page => {
     const { width, height } = page.getSize();
-    const textWidth = font.widthOfTextAtSize(text, fontSize);
     
-    page.drawText(text, {
-      x: (width - textWidth) / 2,
-      y: height / 2,
-      size: fontSize,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
-      opacity,
-      rotate: degrees(rotation),
-    });
+    if (embeddedImage) {
+      // Image watermark
+      const imgWidth = embeddedImage.width * imageScale;
+      const imgHeight = embeddedImage.height * imageScale;
+      
+      if (position === 'tile') {
+        // Tile the image across the page
+        const spacingX = imgWidth * 1.5;
+        const spacingY = imgHeight * 1.5;
+        for (let y = 0; y < height + imgHeight; y += spacingY) {
+          for (let x = 0; x < width + imgWidth; x += spacingX) {
+            page.drawImage(embeddedImage, {
+              x: x - imgWidth / 2,
+              y: y - imgHeight / 2,
+              width: imgWidth,
+              height: imgHeight,
+              opacity,
+            });
+          }
+        }
+      } else {
+        const { x, y } = getWatermarkPosition(position, width, height, imgWidth, imgHeight);
+        page.drawImage(embeddedImage, {
+          x,
+          y,
+          width: imgWidth,
+          height: imgHeight,
+          opacity,
+        });
+      }
+    } else {
+      // Text watermark
+      const textWidth = font.widthOfTextAtSize(text, fontSize);
+      const textHeight = fontSize;
+      
+      if (position === 'diagonal') {
+        page.drawText(text, {
+          x: (width - textWidth) / 2,
+          y: height / 2,
+          size: fontSize,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+          opacity,
+          rotate: degrees(-45),
+        });
+      } else if (position === 'tile') {
+        // Tile the text across the page
+        const spacingX = textWidth * 1.5;
+        const spacingY = fontSize * 4;
+        for (let y = 0; y < height + fontSize; y += spacingY) {
+          for (let x = -textWidth; x < width + textWidth; x += spacingX) {
+            page.drawText(text, {
+              x,
+              y,
+              size: fontSize,
+              font,
+              color: rgb(0.5, 0.5, 0.5),
+              opacity,
+              rotate: degrees(rotation),
+            });
+          }
+        }
+      } else {
+        const { x, y } = getWatermarkPosition(position, width, height, textWidth, textHeight);
+        page.drawText(text, {
+          x,
+          y,
+          size: fontSize,
+          font,
+          color: rgb(0.5, 0.5, 0.5),
+          opacity,
+          rotate: degrees(rotation),
+        });
+      }
+    }
   });
   
   return pdfDoc.save();
 };
+
+// Helper function to calculate watermark position
+function getWatermarkPosition(
+  position: WatermarkPosition,
+  pageWidth: number,
+  pageHeight: number,
+  itemWidth: number,
+  itemHeight: number
+): { x: number; y: number } {
+  const margin = 40;
+  
+  switch (position) {
+    case 'top-left':
+      return { x: margin, y: pageHeight - margin - itemHeight };
+    case 'top-center':
+      return { x: (pageWidth - itemWidth) / 2, y: pageHeight - margin - itemHeight };
+    case 'top-right':
+      return { x: pageWidth - margin - itemWidth, y: pageHeight - margin - itemHeight };
+    case 'center-left':
+      return { x: margin, y: (pageHeight - itemHeight) / 2 };
+    case 'center':
+    case 'diagonal':
+      return { x: (pageWidth - itemWidth) / 2, y: (pageHeight - itemHeight) / 2 };
+    case 'center-right':
+      return { x: pageWidth - margin - itemWidth, y: (pageHeight - itemHeight) / 2 };
+    case 'bottom-left':
+      return { x: margin, y: margin };
+    case 'bottom-center':
+      return { x: (pageWidth - itemWidth) / 2, y: margin };
+    case 'bottom-right':
+      return { x: pageWidth - margin - itemWidth, y: margin };
+    default:
+      return { x: (pageWidth - itemWidth) / 2, y: (pageHeight - itemHeight) / 2 };
+  }
+}
 
 // Page size definitions in points (72 points = 1 inch)
 export const PAGE_SIZES = {
