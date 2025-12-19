@@ -151,7 +151,7 @@ const PageNumbers = () => {
       setFileInfos(infos);
       
       // Set default toPage based on first file
-      if (infos.length > 0) {
+      if (infos.length > 0 && selectedFileIndex === 0) {
         setToPage(infos[0].pageCount);
       }
     };
@@ -162,6 +162,15 @@ const PageNumbers = () => {
       setFileInfos([]);
     }
   }, [files]);
+
+  // Update page range when selected file changes
+  useEffect(() => {
+    if (fileInfos[selectedFileIndex]) {
+      setFromPage(1);
+      setToPage(fileInfos[selectedFileIndex].pageCount);
+      setSkippedPages(new Set());
+    }
+  }, [selectedFileIndex, fileInfos.length]);
 
   const getFormat = () => {
     if (textFormat === 'custom') return customFormat;
