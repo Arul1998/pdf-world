@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Hash, Download, Loader2 } from 'lucide-react';
+import { Hash, Download, Loader2, FileText, X } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { addPageNumbers, downloadBlob, getPdfPageCount, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
+import { addPageNumbers, downloadBlob, getPdfPageCount, generatePdfThumbnail, formatFileSize, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
 
 type Position = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 type TextFormat = 'number' | 'page-n' | 'page-n-of-p' | 'custom';
@@ -99,6 +99,7 @@ const PagePreview = ({ position, margin, format, pageNumber, totalPages, isEvenP
 
 const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
+  const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
   const [position, setPosition] = useState<Position>('bottom-left');
   const [margin, setMargin] = useState<'small' | 'recommended' | 'big'>('recommended');
@@ -112,14 +113,20 @@ const PageNumbers = () => {
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const loadPageCount = async () => {
+    const loadPdfInfo = async () => {
       if (files.length > 0) {
         const count = await getPdfPageCount(files[0].file);
         setTotalPages(count);
         setToPage(count);
+        
+        // Generate thumbnail
+        const thumb = await generatePdfThumbnail(files[0].file);
+        setThumbnail(thumb);
+      } else {
+        setThumbnail(null);
       }
     };
-    loadPageCount();
+    loadPdfInfo();
   }, [files]);
 
   const getFormat = () => {
@@ -196,6 +203,39 @@ const PageNumbers = () => {
 
         {files.length > 0 && (
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
+            {/* Uploaded PDF Preview */}
+            <div className="space-y-3">
+              <Label>Uploaded PDF</Label>
+              <div className="flex items-center gap-4 p-3 bg-background border border-border rounded-lg">
+                {thumbnail ? (
+                  <img 
+                    src={thumbnail} 
+                    alt="PDF preview" 
+                    className="w-16 h-20 object-cover rounded border border-border shadow-sm"
+                  />
+                ) : (
+                  <div className="w-16 h-20 flex items-center justify-center bg-muted rounded border border-border">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{files[0].name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatFileSize(files[0].file.size)} • {totalPages} {totalPages === 1 ? 'page' : 'pages'}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setFiles([])}
+                  className="shrink-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Live Preview */}
             {/* Live Preview */}
             <div className="space-y-3">
               <Label>Preview</Label>
