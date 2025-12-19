@@ -139,6 +139,25 @@ const PageNumbers = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Persist last selected position as default
+  useEffect(() => {
+    const saved = localStorage.getItem('pageNumbers.position');
+    if (
+      saved === 'top-left' ||
+      saved === 'top-center' ||
+      saved === 'top-right' ||
+      saved === 'bottom-left' ||
+      saved === 'bottom-center' ||
+      saved === 'bottom-right'
+    ) {
+      setPosition(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('pageNumbers.position', position);
+  }, [position]);
+
   useEffect(() => {
     const loadFileInfos = async () => {
       const infos: FileInfo[] = await Promise.all(
