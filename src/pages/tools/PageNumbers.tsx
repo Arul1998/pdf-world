@@ -22,45 +22,39 @@ const TEXT_FORMAT_OPTIONS: { value: TextFormat; label: string; format: string }[
   { value: 'custom', label: 'Custom', format: '' },
 ];
 
-interface PdfPreviewCardProps {
-  file: PDFFile;
-  thumbnail: string | null;
-  pageCount: number;
+interface PagePreviewProps {
+  pageNumber: number;
+  displayNumber: number;
+  totalPages: number;
   position: Position;
   margin: 'small' | 'recommended' | 'big';
   format: string;
-  firstNumber: number;
-  totalPages: number;
-  pageMode: 'single' | 'facing';
-  onRemove: () => void;
+  isInRange: boolean;
 }
 
-const PdfPreviewCard = ({ 
-  file, 
-  thumbnail, 
-  pageCount,
+const PagePreview = ({ 
+  pageNumber, 
+  displayNumber,
+  totalPages,
   position, 
   margin, 
-  format, 
-  firstNumber, 
-  totalPages,
-  pageMode,
-  onRemove 
-}: PdfPreviewCardProps) => {
+  format,
+  isInRange 
+}: PagePreviewProps) => {
   const marginSizes = { small: 4, recommended: 8, big: 12 };
   const marginPx = marginSizes[margin];
   
   const text = format
-    .replace('{n}', String(firstNumber))
+    .replace('{n}', String(displayNumber))
     .replace('{total}', String(totalPages))
     .replace('{p}', String(totalPages));
 
   const getPositionStyles = (): React.CSSProperties => {
     const styles: React.CSSProperties = {
       position: 'absolute',
-      fontSize: '7px',
+      fontSize: '8px',
       color: 'hsl(var(--foreground))',
-      fontWeight: 500,
+      fontWeight: 600,
       textShadow: '0 0 2px hsl(var(--background))',
     };
 
@@ -83,49 +77,20 @@ const PdfPreviewCard = ({
   };
 
   return (
-    <div className="group relative bg-background border border-border rounded-xl p-3 shadow-sm">
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onRemove}
-        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity z-10"
-      >
-        <X className="h-3 w-3" />
-      </Button>
-      
-      {/* PDF Preview with page number overlay */}
-      <div className="relative w-24 h-32 mx-auto mb-2 bg-muted rounded border border-border overflow-hidden">
-        {thumbnail ? (
-          <img 
-            src={thumbnail} 
-            alt="PDF preview" 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <FileText className="h-8 w-8 text-muted-foreground" />
-          </div>
-        )}
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative w-16 h-22 bg-background rounded border border-border shadow-sm overflow-hidden">
+        {/* Page lines decoration */}
+        <div className="absolute inset-2 space-y-1">
+          <div className="h-1 bg-muted-foreground/20 rounded w-3/4" />
+          <div className="h-1 bg-muted-foreground/20 rounded w-full" />
+          <div className="h-1 bg-muted-foreground/20 rounded w-5/6" />
+          <div className="h-1 bg-muted-foreground/20 rounded w-2/3" />
+        </div>
         
-        {/* Page number overlay */}
-        <span style={getPositionStyles()}>{text}</span>
-        
-        {/* Facing pages indicator */}
-        {pageMode === 'facing' && (
-          <div className="absolute inset-0 flex">
-            <div className="w-1/2 border-r border-dashed border-muted-foreground/30" />
-          </div>
-        )}
+        {/* Page number overlay - only show if in range */}
+        {isInRange && <span style={getPositionStyles()}>{text}</span>}
       </div>
-      
-      <div className="text-center">
-        <p className="text-xs font-medium truncate max-w-[100px]" title={file.name}>
-          {file.name}
-        </p>
-        <p className="text-[10px] text-muted-foreground">
-          {formatFileSize(file.file.size)} • {pageCount} pg
-        </p>
-      </div>
+      <span className="text-[10px] text-muted-foreground">Page {pageNumber}</span>
     </div>
   );
 };
@@ -139,6 +104,7 @@ interface FileInfo {
 const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
   const [position, setPosition] = useState<Position>('bottom-left');
   const [margin, setMargin] = useState<'small' | 'recommended' | 'big'>('recommended');
@@ -179,10 +145,15 @@ const PageNumbers = () => {
     return TEXT_FORMAT_OPTIONS.find(opt => opt.value === textFormat)?.format || '{n}';
   };
 
+  const selectedFile = fileInfos[selectedFileIndex];
   const previewTotalPages = toPage - fromPage + 1;
 
   const handleRemoveFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
+    // Adjust selected index if needed
+    if (selectedFileIndex >= files.length - 1 && selectedFileIndex > 0) {
+      setSelectedFileIndex(selectedFileIndex - 1);
+    }
   };
 
   const handleAddNumbers = async () => {
@@ -275,26 +246,77 @@ const PageNumbers = () => {
 
         {files.length > 0 && (
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
-            {/* Combined PDF Preview Cards */}
+            {/* PDF Selector and Preview */}
             <div className="space-y-3">
-              <Label>Preview ({files.length} {files.length === 1 ? 'file' : 'files'})</Label>
-              <div className="flex flex-wrap gap-4 justify-center p-4 bg-muted rounded-lg">
-                {fileInfos.map((info, index) => (
-                  <PdfPreviewCard
-                    key={info.file.id}
-                    file={info.file}
-                    thumbnail={info.thumbnail}
-                    pageCount={info.pageCount}
-                    position={position}
-                    margin={margin}
-                    format={getFormat()}
-                    firstNumber={firstNumber}
-                    totalPages={previewTotalPages}
-                    pageMode={pageMode}
-                    onRemove={() => handleRemoveFile(index)}
-                  />
-                ))}
+              <div className="flex items-center justify-between">
+                <Label>Page Preview</Label>
+                {files.length > 1 && (
+                  <Select 
+                    value={String(selectedFileIndex)} 
+                    onValueChange={(v) => setSelectedFileIndex(parseInt(v))}
+                  >
+                    <SelectTrigger className="w-[200px] bg-background">
+                      <SelectValue placeholder="Select PDF" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fileInfos.map((info, index) => (
+                        <SelectItem key={info.file.id} value={String(index)}>
+                          {info.file.name} ({info.pageCount} pages)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
+              
+              {/* File info bar */}
+              <div className="flex items-center gap-2 p-2 bg-background rounded-lg border border-border">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium truncate flex-1">
+                  {selectedFile?.file.name || 'No file selected'}
+                </span>
+                {selectedFile && (
+                  <>
+                    <span className="text-xs text-muted-foreground">
+                      {formatFileSize(selectedFile.file.file.size)} • {selectedFile.pageCount} pages
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveFile(selectedFileIndex)}
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Scrollable page previews */}
+              {selectedFile && (
+                <div className="h-48 overflow-y-auto bg-muted rounded-lg p-4 border border-border">
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    {Array.from({ length: selectedFile.pageCount }, (_, i) => {
+                      const pageNum = i + 1;
+                      const isInRange = pageNum >= fromPage && pageNum <= toPage;
+                      const displayNumber = isInRange ? firstNumber + (pageNum - fromPage) : 0;
+                      
+                      return (
+                        <PagePreview
+                          key={i}
+                          pageNumber={pageNum}
+                          displayNumber={displayNumber}
+                          totalPages={previewTotalPages}
+                          position={position}
+                          margin={margin}
+                          format={getFormat()}
+                          isInRange={isInRange}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Page Mode */}
