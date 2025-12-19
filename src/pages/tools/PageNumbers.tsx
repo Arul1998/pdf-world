@@ -326,31 +326,72 @@ const PageNumbers = () => {
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
             {/* PDF Selector and Preview */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <Label className="text-base font-semibold">Page Preview</Label>
                   <p className="text-xs text-muted-foreground mt-0.5">Click on a page to skip numbering</p>
                 </div>
-                {files.length > 1 && (
-                  <Select 
-                    value={String(selectedFileIndex)} 
-                    onValueChange={(v) => {
-                      setSelectedFileIndex(parseInt(v));
-                      setSkippedPages(new Set());
-                    }}
-                  >
-                    <SelectTrigger className="w-[220px] bg-background">
-                      <SelectValue placeholder="Select PDF" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fileInfos.map((info, index) => (
-                        <SelectItem key={info.file.id} value={String(index)}>
-                          {info.file.name} ({info.pageCount} pages)
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                
+                {/* PDF file selector with delete option */}
+                <div className="flex items-center gap-2">
+                  {files.length > 1 ? (
+                    <Select 
+                      value={String(selectedFileIndex)} 
+                      onValueChange={(v) => {
+                        setSelectedFileIndex(parseInt(v));
+                        setSkippedPages(new Set());
+                      }}
+                    >
+                      <SelectTrigger className="w-[260px] bg-background border-border">
+                        <div className="flex items-center gap-2 truncate">
+                          <FileText className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="truncate">{selectedFile?.file.name}</span>
+                          <span className="text-muted-foreground text-xs shrink-0">
+                            ({selectedFile?.pageCount} pages)
+                          </span>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border-border z-50">
+                        {fileInfos.map((info, index) => (
+                          <SelectItem 
+                            key={info.file.id} 
+                            value={String(index)}
+                            className="py-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-primary" />
+                              <span className="truncate max-w-[160px]">{info.file.name}</span>
+                              <span className="text-muted-foreground text-xs">
+                                ({info.pageCount} pages)
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : selectedFile && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-background border border-border rounded-lg">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="truncate max-w-[180px] text-sm">{selectedFile.file.name}</span>
+                      <span className="text-muted-foreground text-xs">
+                        ({selectedFile.pageCount} pages)
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Delete current file button */}
+                  {selectedFile && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleRemoveFile(selectedFileIndex)}
+                      className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      title="Remove this PDF"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Scrollable page previews - bigger */}
