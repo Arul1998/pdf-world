@@ -378,35 +378,35 @@ export const addWatermark = async (
     const { width, height } = page.getSize();
     
     if (embeddedImage) {
-      // Image watermark
-      const imgWidth = embeddedImage.width * imageScale;
-      const imgHeight = embeddedImage.height * imageScale;
+      // Image watermark - fit to page
+      const imgAspect = embeddedImage.width / embeddedImage.height;
+      const pageAspect = width / height;
       
-      if (position === 'tile') {
-        // Tile the image across the page
-        const spacingX = imgWidth * 1.5;
-        const spacingY = imgHeight * 1.5;
-        for (let y = 0; y < height + imgHeight; y += spacingY) {
-          for (let x = 0; x < width + imgWidth; x += spacingX) {
-            page.drawImage(embeddedImage, {
-              x: x - imgWidth / 2,
-              y: y - imgHeight / 2,
-              width: imgWidth,
-              height: imgHeight,
-              opacity,
-            });
-          }
-        }
+      let imgWidth: number;
+      let imgHeight: number;
+      
+      // Scale image to cover the entire page
+      if (imgAspect > pageAspect) {
+        // Image is wider than page - fit to height
+        imgHeight = height;
+        imgWidth = imgHeight * imgAspect;
       } else {
-        const { x, y } = getWatermarkPosition(position, width, height, imgWidth, imgHeight);
-        page.drawImage(embeddedImage, {
-          x,
-          y,
-          width: imgWidth,
-          height: imgHeight,
-          opacity,
-        });
+        // Image is taller than page - fit to width
+        imgWidth = width;
+        imgHeight = imgWidth / imgAspect;
       }
+      
+      // Center the image on the page
+      const x = (width - imgWidth) / 2;
+      const y = (height - imgHeight) / 2;
+      
+      page.drawImage(embeddedImage, {
+        x,
+        y,
+        width: imgWidth,
+        height: imgHeight,
+        opacity,
+      });
     } else {
       // Text watermark
       const textWidth = font.widthOfTextAtSize(text, fontSize);
