@@ -222,31 +222,76 @@ export const compressPdf = async (
 };
 
 // Add page numbers
+export type PageNumberOptions = {
+  position?: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+  format?: string;
+  margin?: 'small' | 'recommended' | 'big';
+  firstNumber?: number;
+  fromPage?: number;
+  toPage?: number;
+  pageMode?: 'single' | 'facing';
+};
+
 export const addPageNumbers = async (
   file: File, 
-  position: 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right' = 'bottom-center',
-  format: string = 'Page {n} of {total}'
+  options: PageNumberOptions = {}
 ): Promise<Uint8Array> => {
+  const {
+    position = 'bottom-center',
+    format = '{n}',
+    margin = 'recommended',
+    firstNumber = 1,
+    fromPage = 1,
+    toPage,
+    pageMode = 'single',
+  } = options;
+
   const arrayBuffer = await readFileAsArrayBuffer(file);
   const pdfDoc = await PDFDocument.load(arrayBuffer);
   const pages = pdfDoc.getPages();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontSize = 10;
+  
+  const marginSizes = { small: 20, recommended: 40, big: 60 };
+  const fontSizes = { small: 8, recommended: 10, big: 12 };
+  const marginPx = marginSizes[margin];
+  const fontSize = fontSizes[margin];
+  
+  const endPage = toPage ? Math.min(toPage, pages.length) : pages.length;
   
   pages.forEach((page, index) => {
+    const pageNum = index + 1;
+    
+    // Skip pages outside the range
+    if (pageNum < fromPage || pageNum > endPage) return;
+    
     const { width, height } = page.getSize();
-    const text = format.replace('{n}', String(index + 1)).replace('{total}', String(pages.length));
+    const displayNumber = firstNumber + (pageNum - fromPage);
+    const text = format
+      .replace('{n}', String(displayNumber))
+      .replace('{total}', String(endPage - fromPage + 1))
+      .replace('{p}', String(endPage - fromPage + 1));
     const textWidth = font.widthOfTextAtSize(text, fontSize);
     
     let x = 0;
     let y = 0;
     
-    if (position.includes('left')) x = 40;
-    else if (position.includes('center')) x = (width - textWidth) / 2;
-    else x = width - textWidth - 40;
+    // For facing pages mode, alternate left/right positions on odd/even pages
+    let effectivePosition = position;
+    if (pageMode === 'facing') {
+      const isEvenPage = pageNum % 2 === 0;
+      if (position.includes('left') && isEvenPage) {
+        effectivePosition = position.replace('left', 'right') as typeof position;
+      } else if (position.includes('right') && isEvenPage) {
+        effectivePosition = position.replace('right', 'left') as typeof position;
+      }
+    }
     
-    if (position.includes('top')) y = height - 30;
-    else y = 30;
+    if (effectivePosition.includes('left')) x = marginPx;
+    else if (effectivePosition.includes('center')) x = (width - textWidth) / 2;
+    else x = width - textWidth - marginPx;
+    
+    if (effectivePosition.includes('top')) y = height - marginPx;
+    else y = marginPx;
     
     page.drawText(text, { x, y, size: fontSize, font, color: rgb(0.3, 0.3, 0.3) });
   });

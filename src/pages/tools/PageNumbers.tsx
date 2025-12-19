@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Hash, Download, Loader2 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -7,17 +7,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { addPageNumbers, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
+import { addPageNumbers, downloadBlob, getPdfPageCount, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
 
 type Position = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+type TextFormat = 'number' | 'page-n' | 'page-n-of-p' | 'custom';
+
+const TEXT_FORMAT_OPTIONS: { value: TextFormat; label: string; format: string }[] = [
+  { value: 'number', label: 'Insert only page number (recommended)', format: '{n}' },
+  { value: 'page-n', label: 'Page {n}', format: 'Page {n}' },
+  { value: 'page-n-of-p', label: 'Page {n} of {p}', format: 'Page {n} of {p}' },
+  { value: 'custom', label: 'Custom', format: '' },
+];
 
 const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [position, setPosition] = useState<Position>('bottom-center');
-  const [format, setFormat] = useState('Page {n} of {total}');
+  const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
+  const [position, setPosition] = useState<Position>('bottom-left');
+  const [margin, setMargin] = useState<'small' | 'recommended' | 'big'>('recommended');
+  const [firstNumber, setFirstNumber] = useState(1);
+  const [fromPage, setFromPage] = useState(1);
+  const [toPage, setToPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [textFormat, setTextFormat] = useState<TextFormat>('number');
+  const [customFormat, setCustomFormat] = useState('Page {n} of {p}');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const loadPageCount = async () => {
+      if (files.length > 0) {
+        const count = await getPdfPageCount(files[0].file);
+        setTotalPages(count);
+        setToPage(count);
+      }
+    };
+    loadPageCount();
+  }, [files]);
+
+  const getFormat = () => {
+    if (textFormat === 'custom') return customFormat;
+    return TEXT_FORMAT_OPTIONS.find(opt => opt.value === textFormat)?.format || '{n}';
+  };
 
   const handleAddNumbers = async () => {
     if (files.length === 0) {
@@ -29,7 +61,17 @@ const PageNumbers = () => {
     setProgress(30);
 
     try {
-      const result = await addPageNumbers(files[0].file, position, format);
+      const options: PageNumberOptions = {
+        position,
+        format: getFormat(),
+        margin,
+        firstNumber,
+        fromPage,
+        toPage,
+        pageMode,
+      };
+      
+      const result = await addPageNumbers(files[0].file, options);
       setProgress(80);
       
       const filename = files[0].name.replace('.pdf', '_numbered.pdf');
@@ -45,6 +87,15 @@ const PageNumbers = () => {
       setProgress(0);
     }
   };
+
+  const positionOptions = [
+    { value: 'top-left', row: 0, col: 0 },
+    { value: 'top-center', row: 0, col: 1 },
+    { value: 'top-right', row: 0, col: 2 },
+    { value: 'bottom-left', row: 1, col: 0 },
+    { value: 'bottom-center', row: 1, col: 1 },
+    { value: 'bottom-right', row: 1, col: 2 },
+  ];
 
   return (
     <ToolLayout
@@ -67,45 +118,128 @@ const PageNumbers = () => {
 
         {files.length > 0 && (
           <div className="space-y-6 p-4 bg-muted/50 rounded-xl">
+            {/* Page Mode */}
             <div className="space-y-3">
-              <Label>Position</Label>
-              <RadioGroup value={position} onValueChange={(v) => setPosition(v as Position)}>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: 'top-left', label: '↖' },
-                    { value: 'top-center', label: '↑' },
-                    { value: 'top-right', label: '↗' },
-                    { value: 'bottom-left', label: '↙' },
-                    { value: 'bottom-center', label: '↓' },
-                    { value: 'bottom-right', label: '↘' },
-                  ].map((option) => (
-                    <label
-                      key={option.value}
-                      className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
-                        position === option.value
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <RadioGroupItem value={option.value} className="sr-only" />
-                      <span className="text-xl">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
+              <Label>Page mode</Label>
+              <RadioGroup 
+                value={pageMode} 
+                onValueChange={(v) => setPageMode(v as 'single' | 'facing')}
+                className="flex gap-6"
+              >
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="single" />
+                  <span>Single page</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <RadioGroupItem value="facing" />
+                  <span>Facing pages</span>
+                </label>
               </RadioGroup>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="format">Number format</Label>
-              <Input
-                id="format"
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-                placeholder="Page {n} of {total}"
-              />
-              <p className="text-xs text-muted-foreground">
-                Use {'{n}'} for current page, {'{total}'} for total pages
-              </p>
+            {/* Position and Margin */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <Label>Position:</Label>
+                <div className="grid grid-cols-3 gap-1 w-24 h-16 border border-border rounded-lg p-1 bg-background">
+                  {positionOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setPosition(opt.value as Position)}
+                      className={`rounded transition-colors ${
+                        position === opt.value
+                          ? 'bg-destructive'
+                          : 'bg-muted hover:bg-muted-foreground/20 border border-dashed border-border'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Margin:</Label>
+                <Select value={margin} onValueChange={(v) => setMargin(v as typeof margin)}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="small">Small</SelectItem>
+                    <SelectItem value="recommended">Recommended</SelectItem>
+                    <SelectItem value="big">Big</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Pages Section */}
+            <div className="space-y-4">
+              <Label>Pages</Label>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">First number:</span>
+                <Input
+                  type="number"
+                  value={firstNumber}
+                  onChange={(e) => setFirstNumber(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 bg-background"
+                  min={1}
+                />
+              </div>
+            </div>
+
+            {/* Page Range */}
+            <div className="space-y-3">
+              <Label>Which pages do you want to number?</Label>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">from page</span>
+                <Input
+                  type="number"
+                  value={fromPage}
+                  onChange={(e) => setFromPage(Math.max(1, Math.min(toPage, parseInt(e.target.value) || 1)))}
+                  className="w-20 bg-background"
+                  min={1}
+                  max={toPage}
+                />
+                <span className="text-sm text-muted-foreground">to</span>
+                <Input
+                  type="number"
+                  value={toPage}
+                  onChange={(e) => setToPage(Math.max(fromPage, Math.min(totalPages, parseInt(e.target.value) || totalPages)))}
+                  className="w-20 bg-background"
+                  min={fromPage}
+                  max={totalPages}
+                />
+              </div>
+            </div>
+
+            {/* Text Format */}
+            <div className="space-y-3">
+              <Label>Text:</Label>
+              <Select value={textFormat} onValueChange={(v) => setTextFormat(v as TextFormat)}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEXT_FORMAT_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {textFormat === 'custom' && (
+                <div className="space-y-2">
+                  <Input
+                    value={customFormat}
+                    onChange={(e) => setCustomFormat(e.target.value)}
+                    placeholder="Page {n} of {p}"
+                    className="bg-background"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Use {'{n}'} for current page, {'{p}'} or {'{total}'} for total pages
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -128,7 +262,7 @@ const PageNumbers = () => {
           ) : (
             <>
               <Download className="mr-2 h-5 w-5" />
-              Add Numbers & Download
+              Add Page Numbers
             </>
           )}
         </Button>
