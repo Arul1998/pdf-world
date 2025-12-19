@@ -10,7 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
-import { addPageNumbers, downloadBlob, getPdfPageCount, generatePdfThumbnail, formatFileSize, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
+import { addPageNumbers, downloadBlob, getPdfPageCount, generatePdfThumbnail, generatePdfPageThumbnails, formatFileSize, type PDFFile, type PageNumberOptions } from '@/lib/pdf-tools';
 
 type Position = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 type TextFormat = 'number' | 'page-n' | 'page-n-of-p' | 'custom';
@@ -31,6 +31,7 @@ interface PagePreviewProps {
   format: string;
   isInRange: boolean;
   isSkipped: boolean;
+  thumbnail: string;
   onClick?: () => void;
 }
 
@@ -43,6 +44,7 @@ const PagePreview = ({
   format,
   isInRange,
   isSkipped,
+  thumbnail,
   onClick
 }: PagePreviewProps) => {
   const marginSizes = { small: 6, recommended: 10, big: 14 };
@@ -57,9 +59,12 @@ const PagePreview = ({
     const styles: React.CSSProperties = {
       position: 'absolute',
       fontSize: '10px',
-      color: 'hsl(var(--foreground))',
+      color: '#333',
       fontWeight: 600,
-      textShadow: '0 0 2px hsl(var(--background))',
+      textShadow: '0 0 3px white, 0 0 3px white',
+      backgroundColor: 'rgba(255,255,255,0.7)',
+      padding: '1px 4px',
+      borderRadius: '2px',
     };
 
     if (position.includes('top')) {
@@ -91,14 +96,22 @@ const PagePreview = ({
       <div className={`relative w-20 h-28 bg-background rounded-lg border-2 shadow-sm overflow-hidden transition-all ${
         isSkipped ? 'border-destructive/50 opacity-60' : 'border-border group-hover:border-primary/50'
       }`}>
-        {/* Page lines decoration */}
-        <div className="absolute inset-3 space-y-1.5">
-          <div className="h-1.5 bg-muted-foreground/15 rounded w-3/4" />
-          <div className="h-1.5 bg-muted-foreground/15 rounded w-full" />
-          <div className="h-1.5 bg-muted-foreground/15 rounded w-5/6" />
-          <div className="h-1.5 bg-muted-foreground/15 rounded w-2/3" />
-          <div className="h-1.5 bg-muted-foreground/15 rounded w-4/5" />
-        </div>
+        {/* PDF page thumbnail */}
+        {thumbnail ? (
+          <img 
+            src={thumbnail} 
+            alt={`Page ${pageNumber}`}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-3 space-y-1.5">
+            <div className="h-1.5 bg-muted-foreground/15 rounded w-3/4" />
+            <div className="h-1.5 bg-muted-foreground/15 rounded w-full" />
+            <div className="h-1.5 bg-muted-foreground/15 rounded w-5/6" />
+            <div className="h-1.5 bg-muted-foreground/15 rounded w-2/3" />
+            <div className="h-1.5 bg-muted-foreground/15 rounded w-4/5" />
+          </div>
+        )}
         
         {/* Skip indicator */}
         {isSkipped && (
@@ -121,6 +134,7 @@ interface FileInfo {
   file: PDFFile;
   thumbnail: string | null;
   pageCount: number;
+  pageThumbnails: string[];
 }
 
 const PageNumbers = () => {
@@ -164,7 +178,8 @@ const PageNumbers = () => {
         files.map(async (file) => {
           const pageCount = await getPdfPageCount(file.file);
           const thumbnail = await generatePdfThumbnail(file.file);
-          return { file, thumbnail, pageCount };
+          const pageThumbnails = await generatePdfPageThumbnails(file.file, 0.3);
+          return { file, thumbnail, pageCount, pageThumbnails };
         })
       );
       setFileInfos(infos);
@@ -368,6 +383,7 @@ const PageNumbers = () => {
                           format={getFormat()}
                           isInRange={isInRange}
                           isSkipped={isSkipped}
+                          thumbnail={selectedFile.pageThumbnails[i] || ''}
                           onClick={() => toggleSkipPage(pageNum)}
                         />
                       );
