@@ -30,6 +30,8 @@ interface PagePreviewProps {
   margin: 'small' | 'recommended' | 'big';
   format: string;
   isInRange: boolean;
+  isSkipped: boolean;
+  onClick?: () => void;
 }
 
 const PagePreview = ({ 
@@ -39,9 +41,11 @@ const PagePreview = ({
   position, 
   margin, 
   format,
-  isInRange 
+  isInRange,
+  isSkipped,
+  onClick
 }: PagePreviewProps) => {
-  const marginSizes = { small: 4, recommended: 8, big: 12 };
+  const marginSizes = { small: 6, recommended: 10, big: 14 };
   const marginPx = marginSizes[margin];
   
   const text = format
@@ -52,7 +56,7 @@ const PagePreview = ({
   const getPositionStyles = (): React.CSSProperties => {
     const styles: React.CSSProperties = {
       position: 'absolute',
-      fontSize: '8px',
+      fontSize: '10px',
       color: 'hsl(var(--foreground))',
       fontWeight: 600,
       textShadow: '0 0 2px hsl(var(--background))',
@@ -76,21 +80,39 @@ const PagePreview = ({
     return styles;
   };
 
+  const showNumber = isInRange && !isSkipped;
+
   return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative w-16 h-22 bg-background rounded border border-border shadow-sm overflow-hidden">
+    <div 
+      className="flex flex-col items-center gap-1.5 cursor-pointer group"
+      onClick={onClick}
+      title={isSkipped ? 'Click to include this page' : 'Click to skip this page'}
+    >
+      <div className={`relative w-20 h-28 bg-background rounded-lg border-2 shadow-sm overflow-hidden transition-all ${
+        isSkipped ? 'border-destructive/50 opacity-60' : 'border-border group-hover:border-primary/50'
+      }`}>
         {/* Page lines decoration */}
-        <div className="absolute inset-2 space-y-1">
-          <div className="h-1 bg-muted-foreground/20 rounded w-3/4" />
-          <div className="h-1 bg-muted-foreground/20 rounded w-full" />
-          <div className="h-1 bg-muted-foreground/20 rounded w-5/6" />
-          <div className="h-1 bg-muted-foreground/20 rounded w-2/3" />
+        <div className="absolute inset-3 space-y-1.5">
+          <div className="h-1.5 bg-muted-foreground/15 rounded w-3/4" />
+          <div className="h-1.5 bg-muted-foreground/15 rounded w-full" />
+          <div className="h-1.5 bg-muted-foreground/15 rounded w-5/6" />
+          <div className="h-1.5 bg-muted-foreground/15 rounded w-2/3" />
+          <div className="h-1.5 bg-muted-foreground/15 rounded w-4/5" />
         </div>
         
-        {/* Page number overlay - only show if in range */}
-        {isInRange && <span style={getPositionStyles()}>{text}</span>}
+        {/* Skip indicator */}
+        {isSkipped && (
+          <div className="absolute inset-0 flex items-center justify-center bg-destructive/10">
+            <X className="h-6 w-6 text-destructive" />
+          </div>
+        )}
+        
+        {/* Page number overlay */}
+        {showNumber && <span style={getPositionStyles()}>{text}</span>}
       </div>
-      <span className="text-[10px] text-muted-foreground">Page {pageNumber}</span>
+      <span className={`text-xs font-medium ${isSkipped ? 'text-destructive' : 'text-muted-foreground'}`}>
+        {pageNumber}
+      </span>
     </div>
   );
 };
@@ -105,6 +127,7 @@ const PageNumbers = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [fileInfos, setFileInfos] = useState<FileInfo[]>([]);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
+  const [skippedPages, setSkippedPages] = useState<Set<number>>(new Set());
   const [pageMode, setPageMode] = useState<'single' | 'facing'>('single');
   const [position, setPosition] = useState<Position>('bottom-left');
   const [margin, setMargin] = useState<'small' | 'recommended' | 'big'>('recommended');
@@ -146,11 +169,23 @@ const PageNumbers = () => {
   };
 
   const selectedFile = fileInfos[selectedFileIndex];
-  const previewTotalPages = toPage - fromPage + 1;
+  const previewTotalPages = toPage - fromPage + 1 - skippedPages.size;
+
+  const toggleSkipPage = (pageNum: number) => {
+    setSkippedPages(prev => {
+      const next = new Set(prev);
+      if (next.has(pageNum)) {
+        next.delete(pageNum);
+      } else {
+        next.add(pageNum);
+      }
+      return next;
+    });
+  };
 
   const handleRemoveFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
-    // Adjust selected index if needed
+    setSkippedPages(new Set()); // Reset skipped pages when file changes
     if (selectedFileIndex >= files.length - 1 && selectedFileIndex > 0) {
       setSelectedFileIndex(selectedFileIndex - 1);
     }
@@ -249,13 +284,19 @@ const PageNumbers = () => {
             {/* PDF Selector and Preview */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label>Page Preview</Label>
+                <div>
+                  <Label className="text-base font-semibold">Page Preview</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Click on a page to skip numbering</p>
+                </div>
                 {files.length > 1 && (
                   <Select 
                     value={String(selectedFileIndex)} 
-                    onValueChange={(v) => setSelectedFileIndex(parseInt(v))}
+                    onValueChange={(v) => {
+                      setSelectedFileIndex(parseInt(v));
+                      setSkippedPages(new Set());
+                    }}
                   >
-                    <SelectTrigger className="w-[200px] bg-background">
+                    <SelectTrigger className="w-[220px] bg-background">
                       <SelectValue placeholder="Select PDF" />
                     </SelectTrigger>
                     <SelectContent>
@@ -268,38 +309,25 @@ const PageNumbers = () => {
                   </Select>
                 )}
               </div>
-              
-              {/* File info bar */}
-              <div className="flex items-center gap-2 p-2 bg-background rounded-lg border border-border">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium truncate flex-1">
-                  {selectedFile?.file.name || 'No file selected'}
-                </span>
-                {selectedFile && (
-                  <>
-                    <span className="text-xs text-muted-foreground">
-                      {formatFileSize(selectedFile.file.file.size)} • {selectedFile.pageCount} pages
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveFile(selectedFileIndex)}
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </>
-                )}
-              </div>
 
-              {/* Scrollable page previews */}
+              {/* Scrollable page previews - bigger */}
               {selectedFile && (
-                <div className="h-48 overflow-y-auto bg-muted rounded-lg p-4 border border-border">
-                  <div className="flex flex-wrap gap-3 justify-center">
+                <div className="h-72 overflow-y-auto bg-muted rounded-xl p-4 border border-border">
+                  <div className="flex flex-wrap gap-4 justify-center">
                     {Array.from({ length: selectedFile.pageCount }, (_, i) => {
                       const pageNum = i + 1;
                       const isInRange = pageNum >= fromPage && pageNum <= toPage;
-                      const displayNumber = isInRange ? firstNumber + (pageNum - fromPage) : 0;
+                      const isSkipped = skippedPages.has(pageNum);
+                      
+                      // Calculate display number accounting for skipped pages
+                      let displayNumber = 0;
+                      if (isInRange && !isSkipped) {
+                        let skippedBefore = 0;
+                        for (let p = fromPage; p < pageNum; p++) {
+                          if (skippedPages.has(p)) skippedBefore++;
+                        }
+                        displayNumber = firstNumber + (pageNum - fromPage) - skippedBefore;
+                      }
                       
                       return (
                         <PagePreview
@@ -311,10 +339,28 @@ const PageNumbers = () => {
                           margin={margin}
                           format={getFormat()}
                           isInRange={isInRange}
+                          isSkipped={isSkipped}
+                          onClick={() => toggleSkipPage(pageNum)}
                         />
                       );
                     })}
                   </div>
+                </div>
+              )}
+              
+              {skippedPages.size > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Skipped pages: {Array.from(skippedPages).sort((a, b) => a - b).join(', ')}
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setSkippedPages(new Set())}
+                    className="text-xs"
+                  >
+                    Clear all
+                  </Button>
                 </div>
               )}
             </div>
