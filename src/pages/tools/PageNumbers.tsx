@@ -355,40 +355,119 @@ const PageNumbers = () => {
 
               {/* Scrollable page previews - bigger */}
               {selectedFile && selectedFile.pageThumbnails && (
-                <div className="h-72 overflow-y-auto bg-muted rounded-xl p-4 border border-border">
-                  <div className="flex flex-wrap gap-4 justify-center">
-                    {Array.from({ length: selectedFile.pageCount }, (_, i) => {
-                      const pageNum = i + 1;
-                      const isInRange = pageNum >= fromPage && pageNum <= toPage;
-                      const isSkipped = skippedPages.has(pageNum);
-                      
-                      // Calculate display number accounting for skipped pages
-                      let displayNumber = 0;
-                      if (isInRange && !isSkipped) {
-                        let skippedBefore = 0;
-                        for (let p = fromPage; p < pageNum; p++) {
-                          if (skippedPages.has(p)) skippedBefore++;
+                <div className="h-80 overflow-y-auto bg-muted rounded-xl p-4 border border-border">
+                  {pageMode === 'facing' ? (
+                    // Facing pages mode - show pages in pairs
+                    <div className="flex flex-wrap gap-6 justify-center">
+                      {Array.from({ length: Math.ceil(selectedFile.pageCount / 2) }, (_, pairIndex) => {
+                        const leftPageNum = pairIndex * 2 + 1;
+                        const rightPageNum = pairIndex * 2 + 2;
+                        const hasRightPage = rightPageNum <= selectedFile.pageCount;
+                        
+                        return (
+                          <div key={pairIndex} className="flex gap-1 bg-background rounded-xl p-3 shadow-sm border border-border">
+                            {/* Left page */}
+                            {(() => {
+                              const pageNum = leftPageNum;
+                              const isInRange = pageNum >= fromPage && pageNum <= toPage;
+                              const isSkipped = skippedPages.has(pageNum);
+                              let displayNumber = 0;
+                              if (isInRange && !isSkipped) {
+                                let skippedBefore = 0;
+                                for (let p = fromPage; p < pageNum; p++) {
+                                  if (skippedPages.has(p)) skippedBefore++;
+                                }
+                                displayNumber = firstNumber + (pageNum - fromPage) - skippedBefore;
+                              }
+                              // For facing pages, odd pages get left position, even get right
+                              const effectivePosition = position.includes('left') ? position : 
+                                position.includes('right') ? position.replace('right', 'left') as Position : position;
+                              return (
+                                <PagePreview
+                                  pageNumber={pageNum}
+                                  displayNumber={displayNumber}
+                                  totalPages={previewTotalPages}
+                                  position={effectivePosition}
+                                  margin={margin}
+                                  format={getFormat()}
+                                  isInRange={isInRange}
+                                  isSkipped={isSkipped}
+                                  thumbnail={selectedFile.pageThumbnails?.[pageNum - 1] || ''}
+                                  onClick={() => toggleSkipPage(pageNum)}
+                                />
+                              );
+                            })()}
+                            {/* Right page */}
+                            {hasRightPage && (() => {
+                              const pageNum = rightPageNum;
+                              const isInRange = pageNum >= fromPage && pageNum <= toPage;
+                              const isSkipped = skippedPages.has(pageNum);
+                              let displayNumber = 0;
+                              if (isInRange && !isSkipped) {
+                                let skippedBefore = 0;
+                                for (let p = fromPage; p < pageNum; p++) {
+                                  if (skippedPages.has(p)) skippedBefore++;
+                                }
+                                displayNumber = firstNumber + (pageNum - fromPage) - skippedBefore;
+                              }
+                              // For facing pages, even pages get right position, odd get left
+                              const effectivePosition = position.includes('right') ? position : 
+                                position.includes('left') ? position.replace('left', 'right') as Position : position;
+                              return (
+                                <PagePreview
+                                  pageNumber={pageNum}
+                                  displayNumber={displayNumber}
+                                  totalPages={previewTotalPages}
+                                  position={effectivePosition}
+                                  margin={margin}
+                                  format={getFormat()}
+                                  isInRange={isInRange}
+                                  isSkipped={isSkipped}
+                                  thumbnail={selectedFile.pageThumbnails?.[pageNum - 1] || ''}
+                                  onClick={() => toggleSkipPage(pageNum)}
+                                />
+                              );
+                            })()}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    // Single page mode
+                    <div className="flex flex-wrap gap-4 justify-center">
+                      {Array.from({ length: selectedFile.pageCount }, (_, i) => {
+                        const pageNum = i + 1;
+                        const isInRange = pageNum >= fromPage && pageNum <= toPage;
+                        const isSkipped = skippedPages.has(pageNum);
+                        
+                        // Calculate display number accounting for skipped pages
+                        let displayNumber = 0;
+                        if (isInRange && !isSkipped) {
+                          let skippedBefore = 0;
+                          for (let p = fromPage; p < pageNum; p++) {
+                            if (skippedPages.has(p)) skippedBefore++;
+                          }
+                          displayNumber = firstNumber + (pageNum - fromPage) - skippedBefore;
                         }
-                        displayNumber = firstNumber + (pageNum - fromPage) - skippedBefore;
-                      }
-                      
-                      return (
-                        <PagePreview
-                          key={i}
-                          pageNumber={pageNum}
-                          displayNumber={displayNumber}
-                          totalPages={previewTotalPages}
-                          position={position}
-                          margin={margin}
-                          format={getFormat()}
-                          isInRange={isInRange}
-                          isSkipped={isSkipped}
-                          thumbnail={selectedFile.pageThumbnails?.[i] || ''}
-                          onClick={() => toggleSkipPage(pageNum)}
-                        />
-                      );
-                    })}
-                  </div>
+                        
+                        return (
+                          <PagePreview
+                            key={i}
+                            pageNumber={pageNum}
+                            displayNumber={displayNumber}
+                            totalPages={previewTotalPages}
+                            position={position}
+                            margin={margin}
+                            format={getFormat()}
+                            isInRange={isInRange}
+                            isSkipped={isSkipped}
+                            thumbnail={selectedFile.pageThumbnails?.[i] || ''}
+                            onClick={() => toggleSkipPage(pageNum)}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -432,19 +511,82 @@ const PageNumbers = () => {
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-3">
                 <Label>Position:</Label>
-                <div className="grid grid-cols-3 gap-1 w-24 h-16 border border-border rounded-lg p-1 bg-background">
-                  {positionOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setPosition(opt.value as Position)}
-                      className={`rounded transition-colors ${
-                        position === opt.value
-                          ? 'bg-destructive'
-                          : 'bg-muted hover:bg-muted-foreground/20 border border-dashed border-border'
-                      }`}
-                    />
-                  ))}
-                </div>
+                {pageMode === 'facing' ? (
+                  // Facing pages position selector - shows two pages side by side with dots
+                  <div className="flex gap-0.5 border border-border rounded-lg p-1.5 bg-background w-fit">
+                    {/* Left page */}
+                    <div className="grid grid-cols-3 gap-0.5 w-14 h-20 border border-dashed border-border rounded p-0.5 bg-muted/30">
+                      {positionOptions.map((opt) => {
+                        // For left page in facing mode, show left positions
+                        const showDot = (position.includes('left') && opt.value === position) ||
+                          (position.includes('right') && opt.value === position.replace('right', 'left')) ||
+                          (position.includes('center') && opt.value === position);
+                        return (
+                          <button
+                            key={`left-${opt.value}`}
+                            onClick={() => {
+                              // Convert to the actual position
+                              if (opt.value.includes('left')) setPosition(opt.value as Position);
+                              else if (opt.value.includes('right')) setPosition(opt.value.replace('right', 'left') as Position);
+                              else setPosition(opt.value as Position);
+                            }}
+                            className={`rounded-full transition-all flex items-center justify-center ${
+                              showDot
+                                ? 'bg-destructive'
+                                : 'hover:bg-muted-foreground/20'
+                            }`}
+                          >
+                            {showDot && <div className="w-2.5 h-2.5 rounded-full bg-destructive" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Right page */}
+                    <div className="grid grid-cols-3 gap-0.5 w-14 h-20 border border-dashed border-border rounded p-0.5 bg-muted/30">
+                      {positionOptions.map((opt) => {
+                        // For right page in facing mode, show right positions (mirrored)
+                        const showDot = (position.includes('right') && opt.value === position) ||
+                          (position.includes('left') && opt.value === position.replace('left', 'right')) ||
+                          (position.includes('center') && opt.value === position);
+                        return (
+                          <button
+                            key={`right-${opt.value}`}
+                            onClick={() => {
+                              // Convert to the actual position
+                              if (opt.value.includes('right')) setPosition(opt.value as Position);
+                              else if (opt.value.includes('left')) setPosition(opt.value.replace('left', 'right') as Position);
+                              else setPosition(opt.value as Position);
+                            }}
+                            className={`rounded-full transition-all flex items-center justify-center ${
+                              showDot
+                                ? 'bg-destructive'
+                                : 'hover:bg-muted-foreground/20'
+                            }`}
+                          >
+                            {showDot && <div className="w-2.5 h-2.5 rounded-full bg-destructive" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  // Single page position selector with red dot
+                  <div className="grid grid-cols-3 gap-1 w-24 h-16 border border-border rounded-lg p-1 bg-background">
+                    {positionOptions.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setPosition(opt.value as Position)}
+                        className={`rounded-full transition-all flex items-center justify-center ${
+                          position === opt.value
+                            ? 'bg-destructive'
+                            : 'bg-muted hover:bg-muted-foreground/20 border border-dashed border-border'
+                        }`}
+                      >
+                        {position === opt.value && <div className="w-2 h-2 rounded-full bg-destructive" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
