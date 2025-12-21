@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Mail, MessageSquare, Send, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const faqs = [
   {
@@ -43,9 +44,7 @@ const Contact = () => {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  const contactEmail = 'support@pdftools.com'; // Replace with your actual email
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!name.trim() || !email.trim() || !message.trim()) {
@@ -55,18 +54,24 @@ const Contact = () => {
 
     setSending(true);
 
-    // Create mailto link with pre-filled content
-    const mailtoSubject = encodeURIComponent(subject || 'Contact from PDF Tools');
-    const mailtoBody = encodeURIComponent(
-      `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-    );
-    
-    window.location.href = `mailto:${contactEmail}?subject=${mailtoSubject}&body=${mailtoBody}`;
-    
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: { name, email, subject, message }
+      });
+
+      if (error) throw error;
+
+      toast.success('Message sent successfully! We will get back to you soon.');
+      setName('');
+      setEmail('');
+      setSubject('');
+      setMessage('');
+    } catch (error: any) {
+      console.error('Error sending message:', error);
+      toast.error('Failed to send message. Please try again.');
+    } finally {
       setSending(false);
-      toast.success('Email client opened! Please send the email to complete your message.');
-    }, 500);
+    }
   };
 
   return (
@@ -145,7 +150,7 @@ const Contact = () => {
 
                 <Button type="submit" className="w-full rounded-xl" disabled={sending}>
                   <Send className="h-4 w-4 mr-2" />
-                  {sending ? 'Opening email client...' : 'Send Message'}
+                  {sending ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>
             </CardContent>
