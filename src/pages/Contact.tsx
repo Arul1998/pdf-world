@@ -148,18 +148,6 @@ const Contact = () => {
                   {sending ? 'Opening email client...' : 'Send Message'}
                 </Button>
               </form>
-
-              <div className="mt-6 pt-6 border-t border-border/50 text-center">
-                <p className="text-sm text-muted-foreground">
-                  Or email us directly at{' '}
-                  <a 
-                    href={`mailto:${contactEmail}`}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {contactEmail}
-                  </a>
-                </p>
-              </div>
             </CardContent>
           </Card>
 
