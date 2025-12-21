@@ -16,6 +16,7 @@ import Watermark from "./pages/tools/Watermark";
 import RemovePages from "./pages/tools/RemovePages";
 import ExtractPages from "./pages/tools/ExtractPages";
 import OrganizePages from "./pages/tools/OrganizePages";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/tools/remove-pages" element={<RemovePages />} />
           <Route path="/tools/extract-pages" element={<ExtractPages />} />
           <Route path="/tools/organize-pages" element={<OrganizePages />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

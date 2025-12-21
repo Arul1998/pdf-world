@@ -80,9 +80,11 @@ export const Header = () => {
               </DropdownMenu>
             );
           })}
-          <Button size="sm" className="ml-2 rounded-xl h-9 px-5" onClick={() => scrollToSection('all-tools')}>
-            All Tools
-          </Button>
+          <Link to="/contact">
+            <Button variant="ghost" size="sm" className="ml-2 rounded-xl h-9 px-5 text-muted-foreground hover:text-foreground">
+              Contact
+            </Button>
+          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -130,9 +132,11 @@ export const Header = () => {
                 </div>
               );
             })}
-            <Button className="mt-3 rounded-xl" onClick={() => scrollToSection('all-tools')}>
-              View All Tools
-            </Button>
+            <Link to="/contact" onClick={() => setMobileMenuOpen(false)}>
+              <Button variant="outline" className="w-full mt-3 rounded-xl">
+                Contact Us
+              </Button>
+            </Link>
           </nav>
         </div>
       )}
