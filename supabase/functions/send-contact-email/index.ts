@@ -43,7 +43,7 @@ const handler = async (req: Request): Promise<Response> => {
       },
       body: JSON.stringify({
         from: "PDF Tools Contact <onboarding@resend.dev>",
-        to: ["your-email@example.com"], // Replace with your actual email
+        to: ["CONTACT_TO_EMAIL_SET_IN_SECRETS"],
         reply_to: email,
         subject: subject || `Contact from ${name}`,
         html: `
