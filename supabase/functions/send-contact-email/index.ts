@@ -61,6 +61,17 @@ const handler = async (req: Request): Promise<Response> => {
                     <!-- Header -->
                     <tr>
                       <td style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 32px 40px; text-align: center;">
+                        <!-- Logo -->
+                        <div style="margin-bottom: 16px;">
+                          <svg width="48" height="48" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="display: inline-block;">
+                            <path d="M8 4C8 2.89543 8.89543 2 10 2H24L32 10V36C32 37.1046 31.1046 38 30 38H10C8.89543 38 8 37.1046 8 36V4Z" fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="2.5"/>
+                            <path d="M24 2V10H32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="20" cy="24" r="8" fill="rgba(255,255,255,0.15)" stroke="#ffffff" stroke-width="2"/>
+                            <path d="M12 24H28" stroke="#ffffff" stroke-width="2"/>
+                            <ellipse cx="20" cy="24" rx="4" ry="8" fill="none" stroke="#ffffff" stroke-width="2"/>
+                            <path d="M12 13H20" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+                          </svg>
+                        </div>
                         <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">PDF World</h1>
                         <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">New Contact Form Submission</p>
                       </td>
