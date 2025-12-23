@@ -121,7 +121,7 @@ const Index = () => {
             {/* Stats */}
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 mt-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
               {[
-                { value: '25+', label: 'PDF Tools' },
+                { value: '25+', label: 'Tools Available' },
                 { value: '100%', label: 'Free Forever' },
                 { value: '0', label: 'Data Stored' },
               ].map((stat) => (
