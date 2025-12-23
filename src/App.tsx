@@ -17,6 +17,8 @@ import RemovePages from "./pages/tools/RemovePages";
 import ExtractPages from "./pages/tools/ExtractPages";
 import OrganizePages from "./pages/tools/OrganizePages";
 import Contact from "./pages/Contact";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +42,8 @@ const App = () => (
           <Route path="/tools/extract-pages" element={<ExtractPages />} />
           <Route path="/tools/organize-pages" element={<OrganizePages />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

@@ -39,13 +39,13 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Info */}
+          {/* Legal */}
           <div>
-            <h4 className="font-semibold text-foreground mb-4">About</h4>
+            <h4 className="font-semibold text-foreground mb-4">Legal</h4>
             <ul className="space-y-2 text-sm">
-              <li className="text-muted-foreground">Built with pdf-lib & PDF.js</li>
-              <li className="text-muted-foreground">Client-side processing only</li>
-              <li className="text-muted-foreground">Auto-delete on refresh</li>
+              <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link></li>
+              <li><Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact Us</Link></li>
               <li>
                 <a 
                   href="https://github.com" 
