@@ -1,15 +1,41 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
-import { tools } from '@/lib/tool-definitions';
+
+const navItems = [
+  { label: 'Organize PDF', sectionId: 'organize' },
+  { label: 'Optimize PDF', sectionId: 'optimize' },
+  { label: 'Convert to PDF', sectionId: 'convert-to' },
+  { label: 'Convert from PDF', sectionId: 'convert-from' },
+  { label: 'Edit PDF', sectionId: 'edit' },
+  { label: 'PDF Security', sectionId: 'security' },
+];
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Get first 4 popular tools for quick access
-  const popularTools = tools.filter(t => !t.comingSoon).slice(0, 4);
+  const scrollToSection = useCallback((sectionId: string) => {
+    setMobileMenuOpen(false);
+    
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [location.pathname, navigate]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
@@ -19,28 +45,23 @@ export const Header = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          {popularTools.map(tool => (
-            <Link
-              key={tool.id}
-              to={tool.path}
+        <nav className="hidden lg:flex items-center gap-5">
+          {navItems.map(item => (
+            <button
+              key={item.sectionId}
+              onClick={() => scrollToSection(item.sectionId)}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {tool.name}
-            </Link>
+              {item.label}
+            </button>
           ))}
-          <Link to="/contact">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-              Contact
-            </Button>
-          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden h-9 w-9"
+          className="lg:hidden h-9 w-9"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -49,23 +70,17 @@ export const Header = () => {
 
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-background">
+        <div className="lg:hidden border-t border-border bg-background">
           <nav className="container py-4 flex flex-col gap-1">
-            {tools.filter(t => !t.comingSoon).map(tool => (
-              <Link
-                key={tool.id}
-                to={tool.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
+            {navItems.map(item => (
+              <button
+                key={item.sectionId}
+                onClick={() => scrollToSection(item.sectionId)}
+                className="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors text-left"
               >
-                {tool.name}
-              </Link>
+                {item.label}
+              </button>
             ))}
-            <Link to="/contact" onClick={() => setMobileMenuOpen(false)}>
-              <Button variant="outline" className="w-full mt-3">
-                Contact Us
-              </Button>
-            </Link>
           </nav>
         </div>
       )}
