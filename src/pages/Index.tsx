@@ -110,12 +110,6 @@ const Index = () => {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </a>
               </Button>
-              <Button asChild variant="outline" size="lg" className="text-base h-14 px-10 rounded-2xl glass hover:bg-card/80 transition-all duration-300">
-                <Link to="/tools/merge">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Try Merge PDF
-                </Link>
-              </Button>
             </div>
 
             {/* Stats */}
