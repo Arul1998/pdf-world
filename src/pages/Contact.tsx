@@ -5,37 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Mail, MessageSquare, Send, HelpCircle } from 'lucide-react';
+import { Mail, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-
-const faqs = [
-  {
-    question: "Is my PDF data secure?",
-    answer: "Yes! All PDF processing happens directly in your browser. Your files are never uploaded to any server, ensuring complete privacy and security."
-  },
-  {
-    question: "What file size limits are there?",
-    answer: "Since processing happens in your browser, file size limits depend on your device's memory. Generally, files up to 100MB work smoothly on most devices."
-  },
-  {
-    question: "Are these tools free to use?",
-    answer: "Yes, all our PDF tools are completely free to use with no hidden fees or subscriptions required."
-  },
-  {
-    question: "Can I use these tools on mobile?",
-    answer: "Absolutely! Our tools are fully responsive and work on smartphones, tablets, and desktop computers."
-  },
-  {
-    question: "Why did my PDF processing fail?",
-    answer: "This can happen with corrupted PDFs, password-protected files, or very large documents. Try with a different file or contact us if the issue persists."
-  },
-  {
-    question: "How do I report a bug or suggest a feature?",
-    answer: "Use the contact form below to send us your feedback. We read every message and appreciate your input!"
-  }
-];
 
 const Contact = () => {
   const [name, setName] = useState('');
@@ -155,29 +127,6 @@ const Contact = () => {
               </form>
             </CardContent>
           </Card>
-
-          {/* FAQ Section */}
-          <div className="mt-12">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
-                <HelpCircle className="h-5 w-5 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold">Frequently Asked Questions</h2>
-            </div>
-            
-            <Accordion type="single" collapsible className="w-full">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="border-border/50">
-                  <AccordionTrigger className="text-left hover:no-underline hover:text-primary">
-                    {faq.question}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground">
-                    {faq.answer}
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </div>
         </div>
       </div>
     </Layout>
