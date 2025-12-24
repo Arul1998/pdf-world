@@ -37,12 +37,21 @@ export const Header = () => {
     }
   }, [location.pathname, navigate]);
 
+  const handleLogoClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (location.pathname === '/') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate('/');
+    }
+  }, [location.pathname, navigate]);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md">
       <div className="container flex h-14 items-center justify-between">
-        <Link to="/" className="hover:opacity-90 transition-opacity">
+        <a href="/" onClick={handleLogoClick} className="hover:opacity-90 transition-opacity cursor-pointer">
           <Logo iconClassName="h-7 w-7" />
-        </Link>
+        </a>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-5">
