@@ -55,6 +55,9 @@ export const Header = () => {
               {item.label}
             </button>
           ))}
+          <Link to="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Contact
+          </Link>
         </nav>
 
         {/* Mobile Menu Button */}
@@ -81,6 +84,13 @@ export const Header = () => {
                 {item.label}
               </button>
             ))}
+            <Link
+              to="/contact"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 text-sm text-foreground hover:bg-muted rounded-lg transition-colors"
+            >
+              Contact
+            </Link>
           </nav>
         </div>
       )}
