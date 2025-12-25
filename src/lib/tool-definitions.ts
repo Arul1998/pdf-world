@@ -362,7 +362,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/unlock',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'protect',

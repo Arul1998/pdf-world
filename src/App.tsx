@@ -17,6 +17,7 @@ import Watermark from "./pages/tools/Watermark";
 import RemovePages from "./pages/tools/RemovePages";
 import ExtractPages from "./pages/tools/ExtractPages";
 import OrganizePages from "./pages/tools/OrganizePages";
+import UnlockPdf from "./pages/tools/UnlockPdf";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -44,6 +45,7 @@ const App = () => (
           <Route path="/tools/remove-pages" element={<RemovePages />} />
           <Route path="/tools/extract-pages" element={<ExtractPages />} />
           <Route path="/tools/organize-pages" element={<OrganizePages />} />
+          <Route path="/tools/unlock" element={<UnlockPdf />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />

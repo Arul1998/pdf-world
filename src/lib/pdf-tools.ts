@@ -585,6 +585,64 @@ export const imageToPdf = async (
   return pdfDoc.save();
 };
 
+// Unlock PDF (remove password protection)
+export const unlockPdf = async (file: File, password: string): Promise<Uint8Array> => {
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  
+  try {
+    // Try to load with password using pdfjs-dist first to verify password
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: arrayBuffer,
+      password: password 
+    });
+    
+    const pdf = await loadingTask.promise;
+    
+    // If we get here, password was correct
+    // Now re-render the PDF without password protection
+    const newPdfDoc = await PDFDocument.create();
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const scale = 2; // Higher quality
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) continue;
+      
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      
+      // Convert canvas to image and embed in new PDF
+      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
+      
+      const jpgImage = await newPdfDoc.embedJpg(imageBytes);
+      
+      // Get original page dimensions
+      const originalViewport = page.getViewport({ scale: 1 });
+      const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
+      
+      newPage.drawImage(jpgImage, {
+        x: 0,
+        y: 0,
+        width: originalViewport.width,
+        height: originalViewport.height,
+      });
+    }
+    
+    return newPdfDoc.save();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('password')) {
+      throw new Error('Incorrect password');
+    }
+    throw error;
+  }
+};
+
 // PDF to images
 export const pdfToImages = async (file: File, format: 'jpeg' | 'png' = 'jpeg', quality: number = 0.9): Promise<string[]> => {
   const arrayBuffer = await readFileAsArrayBuffer(file);
