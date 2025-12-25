@@ -371,7 +371,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/protect',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'sign',
