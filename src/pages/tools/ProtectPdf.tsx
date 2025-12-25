@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Lock, Download, Loader2, Eye, EyeOff } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -8,6 +8,40 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { protectPdf, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
+import { cn } from '@/lib/utils';
+
+const getPasswordStrength = (password: string): { level: 'weak' | 'medium' | 'strong'; score: number; feedback: string } => {
+  if (!password) return { level: 'weak', score: 0, feedback: '' };
+  
+  let score = 0;
+  
+  // Length checks
+  if (password.length >= 4) score += 1;
+  if (password.length >= 8) score += 1;
+  if (password.length >= 12) score += 1;
+  
+  // Character variety checks
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^a-zA-Z0-9]/.test(password)) score += 1;
+  
+  let level: 'weak' | 'medium' | 'strong';
+  let feedback: string;
+  
+  if (score <= 2) {
+    level = 'weak';
+    feedback = 'Add numbers, uppercase, or special characters';
+  } else if (score <= 4) {
+    level = 'medium';
+    feedback = 'Good, but could be stronger';
+  } else {
+    level = 'strong';
+    feedback = 'Strong password';
+  }
+  
+  return { level, score: Math.min(score, 7), feedback };
+};
 
 const ProtectPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
@@ -17,6 +51,8 @@ const ProtectPdf = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+
+  const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
   const handleProtect = async () => {
     if (files.length === 0) {
@@ -103,7 +139,7 @@ const ProtectPdf = () => {
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
@@ -113,6 +149,49 @@ const ProtectPdf = () => {
                   )}
                 </Button>
               </div>
+              
+              {/* Password Strength Indicator */}
+              {password.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex gap-1">
+                    {[1, 2, 3].map((bar) => (
+                      <div
+                        key={bar}
+                        className={cn(
+                          "h-1.5 flex-1 rounded-full transition-colors duration-200",
+                          bar === 1 && password.length > 0 && (
+                            passwordStrength.level === 'weak' ? 'bg-red-500' :
+                            passwordStrength.level === 'medium' ? 'bg-yellow-500' :
+                            'bg-green-500'
+                          ),
+                          bar === 2 && (
+                            passwordStrength.level === 'medium' ? 'bg-yellow-500' :
+                            passwordStrength.level === 'strong' ? 'bg-green-500' :
+                            'bg-muted'
+                          ),
+                          bar === 3 && (
+                            passwordStrength.level === 'strong' ? 'bg-green-500' :
+                            'bg-muted'
+                          )
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={cn(
+                      "text-xs font-medium capitalize",
+                      passwordStrength.level === 'weak' && 'text-red-500',
+                      passwordStrength.level === 'medium' && 'text-yellow-600',
+                      passwordStrength.level === 'strong' && 'text-green-600'
+                    )}>
+                      {passwordStrength.level}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {passwordStrength.feedback}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Confirm Password Input */}
