@@ -380,7 +380,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/sign',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'redact',

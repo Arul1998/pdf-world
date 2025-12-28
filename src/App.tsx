@@ -19,6 +19,7 @@ import ExtractPages from "./pages/tools/ExtractPages";
 import OrganizePages from "./pages/tools/OrganizePages";
 import UnlockPdf from "./pages/tools/UnlockPdf";
 import ProtectPdf from "./pages/tools/ProtectPdf";
+import SignPdf from "./pages/tools/SignPdf";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/tools/organize-pages" element={<OrganizePages />} />
           <Route path="/tools/unlock" element={<UnlockPdf />} />
           <Route path="/tools/protect" element={<ProtectPdf />} />
+          <Route path="/tools/sign" element={<SignPdf />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
