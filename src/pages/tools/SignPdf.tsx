@@ -273,7 +273,7 @@ const SignPdf = () => {
                     <canvas
                       ref={canvasRef}
                       className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-white touch-none"
-                      style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m12 19 7-7 3 3-7 7-3-3z%27/%3E%3Cpath d=%27m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z%27/%3E%3Cpath d=%27m2 2 7.586 7.586%27/%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%272%27/%3E%3C/svg%3E") 2 22, crosshair' }}
+                      style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M12 20h9%27/%3E%3Cpath d=%27M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z%27/%3E%3C/svg%3E") 0 24, crosshair' }}
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
