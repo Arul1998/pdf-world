@@ -775,3 +775,102 @@ export const protectPdf = async (
   
   return newPdfDoc.save();
 };
+
+// Sign position type
+export type SignaturePosition = 'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
+
+export type SignatureOptions = {
+  position?: SignaturePosition;
+  pageNumbers?: number[]; // Pages to sign, defaults to last page only
+  scale?: number; // Signature scale factor
+};
+
+// Add signature to PDF
+export const signPdf = async (
+  file: File,
+  signatureDataUrl: string,
+  options: SignatureOptions = {},
+  onPageProgress?: (currentPage: number, totalPages: number) => void
+): Promise<Uint8Array> => {
+  const { 
+    position = 'bottom-right',
+    pageNumbers,
+    scale = 0.3,
+  } = options;
+
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+  
+  // Extract base64 data from data URL
+  const base64Data = signatureDataUrl.split(',')[1];
+  const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+  
+  // Embed the signature image
+  const signatureImage = await pdfDoc.embedPng(imageBytes);
+  
+  // Determine which pages to sign (default: last page only)
+  const pagesToSign = pageNumbers || [pages.length];
+  
+  for (let i = 0; i < pages.length; i++) {
+    onPageProgress?.(i + 1, pages.length);
+    
+    const pageNum = i + 1;
+    if (!pagesToSign.includes(pageNum)) continue;
+    
+    const page = pages[i];
+    const { width, height } = page.getSize();
+    
+    // Calculate signature dimensions
+    const sigWidth = signatureImage.width * scale;
+    const sigHeight = signatureImage.height * scale;
+    
+    // Ensure signature fits on page
+    const maxWidth = width * 0.4;
+    const maxHeight = height * 0.15;
+    
+    let finalWidth = sigWidth;
+    let finalHeight = sigHeight;
+    
+    if (sigWidth > maxWidth) {
+      const ratio = maxWidth / sigWidth;
+      finalWidth = maxWidth;
+      finalHeight = sigHeight * ratio;
+    }
+    
+    if (finalHeight > maxHeight) {
+      const ratio = maxHeight / finalHeight;
+      finalHeight = maxHeight;
+      finalWidth = finalWidth * ratio;
+    }
+    
+    // Calculate position
+    const margin = 40;
+    let x = 0;
+    let y = 0;
+    
+    if (position.includes('left')) {
+      x = margin;
+    } else if (position.includes('center')) {
+      x = (width - finalWidth) / 2;
+    } else {
+      x = width - finalWidth - margin;
+    }
+    
+    if (position.includes('top')) {
+      y = height - finalHeight - margin;
+    } else {
+      y = margin;
+    }
+    
+    // Draw signature on page
+    page.drawImage(signatureImage, {
+      x,
+      y,
+      width: finalWidth,
+      height: finalHeight,
+    });
+  }
+  
+  return pdfDoc.save();
+};
