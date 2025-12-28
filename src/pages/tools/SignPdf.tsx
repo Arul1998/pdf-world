@@ -13,6 +13,19 @@ import { cn } from '@/lib/utils';
 
 type SignaturePosition = 'bottom-left' | 'bottom-center' | 'bottom-right' | 'top-left' | 'top-center' | 'top-right';
 
+const SIGNATURE_COLORS = [
+  { id: 'black', name: 'Black', value: '#1a1a1a' },
+  { id: 'blue', name: 'Blue', value: '#1e40af' },
+  { id: 'navy', name: 'Navy', value: '#1e3a5f' },
+  { id: 'red', name: 'Red', value: '#b91c1c' },
+];
+
+const SIGNATURE_THICKNESS = [
+  { id: 'thin', name: 'Thin', value: 1.5 },
+  { id: 'medium', name: 'Medium', value: 2.5 },
+  { id: 'thick', name: 'Thick', value: 4 },
+];
+
 const SIGNATURE_FONTS = [
   { id: 'cursive', name: 'Cursive', fontFamily: "'Dancing Script', cursive" },
   { id: 'elegant', name: 'Elegant', fontFamily: "'Great Vibes', cursive" },
@@ -25,6 +38,8 @@ const SignPdf = () => {
   const [signatureMode, setSignatureMode] = useState<'draw' | 'type'>('draw');
   const [typedName, setTypedName] = useState('');
   const [selectedFont, setSelectedFont] = useState('cursive');
+  const [selectedColor, setSelectedColor] = useState('black');
+  const [selectedThickness, setSelectedThickness] = useState('medium');
   const [position, setPosition] = useState<SignaturePosition>('bottom-right');
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -34,6 +49,10 @@ const SignPdf = () => {
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const getCurrentColor = () => SIGNATURE_COLORS.find(c => c.id === selectedColor)?.value || '#1a1a1a';
+  const getCurrentThickness = () => SIGNATURE_THICKNESS.find(t => t.id === selectedThickness)?.value || 2.5;
+  
 
   // Initialize canvas when tab is active
   const initCanvas = useCallback(() => {
@@ -101,6 +120,12 @@ const SignPdf = () => {
     const context = canvas.getContext('2d');
     if (!context) return;
 
+    // Apply current color and thickness
+    context.strokeStyle = getCurrentColor();
+    context.lineWidth = getCurrentThickness();
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+
     setIsDrawing(true);
     const { x, y } = getCoordinates(e);
     
@@ -153,8 +178,11 @@ const SignPdf = () => {
     setSignatureDataUrl(null);
   };
 
-  const generateTypedSignature = () => {
-    if (!typedName.trim()) return;
+  const generateTypedSignature = useCallback(() => {
+    if (!typedName.trim()) {
+      setSignatureDataUrl(null);
+      return;
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = 400;
@@ -167,19 +195,19 @@ const SignPdf = () => {
 
     const font = SIGNATURE_FONTS.find(f => f.id === selectedFont);
     ctx.font = `48px ${font?.fontFamily || "'Dancing Script', cursive"}`;
-    ctx.fillStyle = '#1a1a1a';
+    ctx.fillStyle = getCurrentColor();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(typedName, canvas.width / 2, canvas.height / 2);
 
     setSignatureDataUrl(canvas.toDataURL('image/png'));
-  };
+  }, [typedName, selectedFont, selectedColor]);
 
   useEffect(() => {
     if (signatureMode === 'type') {
       generateTypedSignature();
     }
-  }, [typedName, selectedFont, signatureMode]);
+  }, [typedName, selectedFont, signatureMode, selectedColor, generateTypedSignature]);
 
   const handleSign = async () => {
     if (files.length === 0) {
@@ -269,6 +297,59 @@ const SignPdf = () => {
                 </TabsList>
 
                 <TabsContent value="draw" className="space-y-4">
+                  {/* Color and Thickness Controls */}
+                  <div className="flex flex-wrap gap-4 items-center">
+                    {/* Color Picker */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground">Color:</Label>
+                      <div className="flex gap-1.5">
+                        {SIGNATURE_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            onClick={() => setSelectedColor(color.id)}
+                            className={cn(
+                              "w-7 h-7 rounded-full border-2 transition-all",
+                              selectedColor === color.id
+                                ? "border-primary ring-2 ring-primary/30 scale-110"
+                                : "border-muted-foreground/20 hover:scale-105"
+                            )}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Thickness Control */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground">Thickness:</Label>
+                      <div className="flex gap-1.5">
+                        {SIGNATURE_THICKNESS.map((thickness) => (
+                          <button
+                            key={thickness.id}
+                            onClick={() => setSelectedThickness(thickness.id)}
+                            className={cn(
+                              "w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all",
+                              selectedThickness === thickness.id
+                                ? "border-primary bg-primary/10"
+                                : "border-muted hover:border-muted-foreground/30"
+                            )}
+                            title={thickness.name}
+                          >
+                            <div 
+                              className="rounded-full"
+                              style={{ 
+                                width: `${thickness.value * 3}px`, 
+                                height: `${thickness.value * 3}px`,
+                                backgroundColor: getCurrentColor()
+                              }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
                   <div ref={containerRef} className="relative">
                     <canvas
                       ref={canvasRef}
@@ -305,6 +386,27 @@ const SignPdf = () => {
                       onChange={(e) => setTypedName(e.target.value)}
                       className="text-lg"
                     />
+
+                    {/* Color Picker for Type */}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm text-muted-foreground">Color:</Label>
+                      <div className="flex gap-1.5">
+                        {SIGNATURE_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            onClick={() => setSelectedColor(color.id)}
+                            className={cn(
+                              "w-7 h-7 rounded-full border-2 transition-all",
+                              selectedColor === color.id
+                                ? "border-primary ring-2 ring-primary/30 scale-110"
+                                : "border-muted-foreground/20 hover:scale-105"
+                            )}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
                     
                     <div className="space-y-2">
                       <Label className="text-sm">Font Style</Label>
@@ -321,8 +423,8 @@ const SignPdf = () => {
                             )}
                           >
                             <span
-                              className="text-xl text-foreground"
-                              style={{ fontFamily: font.fontFamily }}
+                              className="text-xl"
+                              style={{ fontFamily: font.fontFamily, color: getCurrentColor() }}
                             >
                               {typedName || 'Your Name'}
                             </span>
