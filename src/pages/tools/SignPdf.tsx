@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -30,51 +30,79 @@ const SignPdf = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize canvas
-  useEffect(() => {
+  // Initialize canvas when tab is active
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
 
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    canvas.style.width = `${canvas.offsetWidth}px`;
-    canvas.style.height = `${canvas.offsetHeight}px`;
+    const rect = container.getBoundingClientRect();
+    const width = rect.width || 400;
+    const height = 128;
+
+    canvas.width = width * 2;
+    canvas.height = height * 2;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
     const context = canvas.getContext('2d');
     if (!context) return;
 
     context.scale(2, 2);
     context.lineCap = 'round';
+    context.lineJoin = 'round';
     context.strokeStyle = '#1a1a1a';
-    context.lineWidth = 2;
-    contextRef.current = context;
+    context.lineWidth = 2.5;
     
     // Fill with white background
     context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillRect(0, 0, width, height);
+    
+    setCanvasReady(true);
   }, []);
+
+  useEffect(() => {
+    if (signatureMode === 'draw' && files.length > 0) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(initCanvas, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [signatureMode, files.length, initCanvas]);
+
+  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width / 2;
+    const scaleY = canvas.height / rect.height / 2;
+    
+    if ('touches' in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    const context = contextRef.current;
-    if (!canvas || !context) return;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
 
     setIsDrawing(true);
-    
-    const rect = canvas.getBoundingClientRect();
-    let x, y;
-    
-    if ('touches' in e) {
-      x = e.touches[0].clientX - rect.left;
-      y = e.touches[0].clientY - rect.top;
-    } else {
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
-    }
+    const { x, y } = getCoordinates(e);
     
     context.beginPath();
     context.moveTo(x, y);
@@ -84,21 +112,16 @@ const SignPdf = () => {
     if (!isDrawing) return;
     
     const canvas = canvasRef.current;
-    const context = contextRef.current;
-    if (!canvas || !context) return;
+    if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    let x, y;
-    
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
     if ('touches' in e) {
       e.preventDefault();
-      x = e.touches[0].clientX - rect.left;
-      y = e.touches[0].clientY - rect.top;
-    } else {
-      x = e.clientX - rect.left;
-      y = e.clientY - rect.top;
     }
-    
+
+    const { x, y } = getCoordinates(e);
     context.lineTo(x, y);
     context.stroke();
   };
@@ -120,11 +143,13 @@ const SignPdf = () => {
 
   const clearCanvas = () => {
     const canvas = canvasRef.current;
-    const context = contextRef.current;
-    if (!canvas || !context) return;
+    if (!canvas) return;
+
+    const context = canvas.getContext('2d');
+    if (!context) return;
 
     context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width / 2, canvas.height / 2);
+    context.fillRect(0, 0, canvas.width, canvas.height);
     setSignatureDataUrl(null);
   };
 
@@ -244,10 +269,11 @@ const SignPdf = () => {
                 </TabsList>
 
                 <TabsContent value="draw" className="space-y-4">
-                  <div className="relative">
+                  <div ref={containerRef} className="relative">
                     <canvas
                       ref={canvasRef}
-                      className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg cursor-crosshair bg-white touch-none"
+                      className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-white touch-none"
+                      style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m12 19 7-7 3 3-7 7-3-3z%27/%3E%3Cpath d=%27m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z%27/%3E%3Cpath d=%27m2 2 7.586 7.586%27/%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%272%27/%3E%3C/svg%3E") 2 22, crosshair' }}
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
