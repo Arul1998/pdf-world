@@ -785,7 +785,61 @@ export type SignatureOptions = {
   scale?: number; // Signature scale factor
 };
 
-// Add signature to PDF
+// Signature placement with exact coordinates
+export type SignaturePlacement = {
+  pageIndex: number;
+  x: number; // Percentage from left (0-100)
+  y: number; // Percentage from top (0-100)
+  width: number; // Percentage of page width
+  height: number; // Percentage of page height
+};
+
+// Add signature to PDF with exact coordinates
+export const signPdfWithCoordinates = async (
+  file: File,
+  signatureDataUrl: string,
+  placements: SignaturePlacement[],
+  onPageProgress?: (currentPage: number, totalPages: number) => void
+): Promise<Uint8Array> => {
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+  
+  // Extract base64 data from data URL
+  const base64Data = signatureDataUrl.split(',')[1];
+  const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+  
+  // Embed the signature image
+  const signatureImage = await pdfDoc.embedPng(imageBytes);
+  
+  for (const placement of placements) {
+    onPageProgress?.(placement.pageIndex + 1, pages.length);
+    
+    if (placement.pageIndex < 0 || placement.pageIndex >= pages.length) continue;
+    
+    const page = pages[placement.pageIndex];
+    const { width, height } = page.getSize();
+    
+    // Convert percentages to PDF coordinates
+    // Note: PDF coordinates start from bottom-left, so we need to flip Y
+    const sigWidth = (placement.width / 100) * width;
+    const sigHeight = (placement.height / 100) * height;
+    const x = (placement.x / 100) * width;
+    const y = height - ((placement.y / 100) * height) - sigHeight; // Flip Y and account for signature height
+    
+    // Draw signature on page
+    page.drawImage(signatureImage, {
+      x,
+      y,
+      width: sigWidth,
+      height: sigHeight,
+    });
+  }
+  
+  return pdfDoc.save();
+};
+
+// Add signature to PDF (legacy position-based)
 export const signPdf = async (
   file: File,
   signatureDataUrl: string,
@@ -873,4 +927,44 @@ export const signPdf = async (
   }
   
   return pdfDoc.save();
+};
+
+// Render PDF pages at higher scale for preview
+export const renderPdfPages = async (
+  file: File,
+  scale: number = 1.0
+): Promise<{ dataUrl: string; width: number; height: number }[]> => {
+  try {
+    const arrayBuffer = await readFileAsArrayBuffer(file);
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+    const pages: { dataUrl: string; width: number; height: number }[] = [];
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale });
+      
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        pages.push({ dataUrl: '', width: 0, height: 0 });
+        continue;
+      }
+      
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      pages.push({
+        dataUrl: canvas.toDataURL('image/jpeg', 0.85),
+        width: viewport.width,
+        height: viewport.height,
+      });
+    }
+    
+    return pages;
+  } catch (error) {
+    console.error('Failed to render PDF pages:', error);
+    return [];
+  }
 };
