@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,8 @@ const SIGNATURE_FONTS = [
 
 const SignPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [signatureMode, setSignatureMode] = useState<'draw' | 'type'>('draw');
+  const [signatureMode, setSignatureMode] = useState<'draw' | 'type' | 'upload'>('draw');
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const [typedName, setTypedName] = useState('');
   const [selectedFont, setSelectedFont] = useState('cursive');
   const [selectedColor, setSelectedColor] = useState('black');
@@ -203,6 +204,50 @@ const SignPdf = () => {
     setSignatureDataUrl(canvas.toDataURL('image/png'));
   }, [typedName, selectedFont, selectedColor]);
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Create canvas to process the image
+        const canvas = document.createElement('canvas');
+        const maxWidth = 400;
+        const maxHeight = 150;
+        let width = img.width;
+        let height = img.height;
+
+        // Scale down if needed
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        if (height > maxHeight) {
+          width = (width * maxHeight) / height;
+          height = maxHeight;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, width, height);
+        setSignatureDataUrl(canvas.toDataURL('image/png'));
+        toast.success('Signature image uploaded');
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
   useEffect(() => {
     if (signatureMode === 'type') {
       generateTypedSignature();
@@ -284,8 +329,8 @@ const SignPdf = () => {
             <div className="space-y-4">
               <Label className="text-base font-semibold">Create Your Signature</Label>
               
-              <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'draw' | 'type')}>
-                <TabsList className="grid w-full grid-cols-2">
+              <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'draw' | 'type' | 'upload')}>
+                <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="draw" className="gap-2">
                     <Pencil className="h-4 w-4" />
                     Draw
@@ -293,6 +338,10 @@ const SignPdf = () => {
                   <TabsTrigger value="type" className="gap-2">
                     <Type className="h-4 w-4" />
                     Type
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Upload
                   </TabsTrigger>
                 </TabsList>
 
@@ -434,6 +483,40 @@ const SignPdf = () => {
                       </div>
                     </div>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="upload" className="space-y-4">
+                  <input
+                    ref={uploadInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <div 
+                    onClick={() => uploadInputRef.current?.click()}
+                    className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-all"
+                  >
+                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="font-medium">Click to upload signature image</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      PNG, JPG or GIF (transparent background recommended)
+                    </p>
+                  </div>
+                  {signatureDataUrl && signatureMode === 'upload' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSignatureDataUrl(null);
+                        if (uploadInputRef.current) uploadInputRef.current.value = '';
+                      }}
+                      className="w-full"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Remove Image
+                    </Button>
+                  )}
                 </TabsContent>
               </Tabs>
 
