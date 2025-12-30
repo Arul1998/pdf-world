@@ -37,12 +37,16 @@ interface PagePreview {
 }
 
 interface SignatureOnPage {
+  id: string;
   pageIndex: number;
   x: number;
   y: number;
   width: number;
   height: number;
+  dataUrl: string;
 }
+
+type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se' | null;
 
 const SignPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
@@ -58,9 +62,13 @@ const SignPdf = () => {
   const [pagesPreviews, setPagesPreviews] = useState<PagePreview[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
-  const [signaturePlacement, setSignaturePlacement] = useState<SignatureOnPage | null>(null);
+  const [signatures, setSignatures] = useState<SignatureOnPage[]>([]);
+  const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeCorner, setResizeCorner] = useState<ResizeCorner>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, mouseX: 0, mouseY: 0 });
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -218,57 +226,130 @@ const SignPdf = () => {
   }, [typedName, selectedFont, signatureMode, selectedColor, generateTypedSignature]);
 
   const handlePageClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!signatureDataUrl || !previewContainerRef.current) return;
+    if (!signatureDataUrl || !previewContainerRef.current || isDragging || isResizing) return;
     const rect = previewContainerRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     const sigWidth = 25, sigHeight = 8;
-    setSignaturePlacement({
+    const newSignature: SignatureOnPage = {
+      id: `sig-${Date.now()}`,
       pageIndex: currentPageIndex,
       x: Math.max(0, Math.min(100 - sigWidth, x - sigWidth / 2)),
       y: Math.max(0, Math.min(100 - sigHeight, y - sigHeight / 2)),
-      width: sigWidth, height: sigHeight,
-    });
+      width: sigWidth, 
+      height: sigHeight,
+      dataUrl: signatureDataUrl,
+    };
+    setSignatures(prev => [...prev, newSignature]);
+    setActiveSignatureId(newSignature.id);
   };
 
-  const handleSignatureDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleSignatureDragStart = (e: React.MouseEvent<HTMLDivElement>, sigId: string) => {
     e.stopPropagation();
-    if (!signaturePlacement || !previewContainerRef.current) return;
+    if (!previewContainerRef.current) return;
     const sigElement = e.currentTarget;
     const sigRect = sigElement.getBoundingClientRect();
     setDragOffset({ x: e.clientX - sigRect.left, y: e.clientY - sigRect.top });
     setIsDragging(true);
+    setActiveSignatureId(sigId);
+  };
+
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>, sigId: string, corner: ResizeCorner) => {
+    e.stopPropagation();
+    const sig = signatures.find(s => s.id === sigId);
+    if (!sig || !previewContainerRef.current) return;
+    setResizeStart({ x: sig.x, y: sig.y, width: sig.width, height: sig.height, mouseX: e.clientX, mouseY: e.clientY });
+    setResizeCorner(corner);
+    setIsResizing(true);
+    setActiveSignatureId(sigId);
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDragging || !signaturePlacement || !previewContainerRef.current) return;
+    if (!previewContainerRef.current) return;
     const rect = previewContainerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left - dragOffset.x) / rect.width) * 100;
-    const y = ((e.clientY - rect.top - dragOffset.y) / rect.height) * 100;
-    setSignaturePlacement({
-      ...signaturePlacement, pageIndex: currentPageIndex,
-      x: Math.max(0, Math.min(100 - signaturePlacement.width, x)),
-      y: Math.max(0, Math.min(100 - signaturePlacement.height, y)),
-    });
+
+    if (isDragging && activeSignatureId) {
+      const x = ((e.clientX - rect.left - dragOffset.x) / rect.width) * 100;
+      const y = ((e.clientY - rect.top - dragOffset.y) / rect.height) * 100;
+      setSignatures(prev => prev.map(sig => 
+        sig.id === activeSignatureId ? {
+          ...sig,
+          pageIndex: currentPageIndex,
+          x: Math.max(0, Math.min(100 - sig.width, x)),
+          y: Math.max(0, Math.min(100 - sig.height, y)),
+        } : sig
+      ));
+    }
+
+    if (isResizing && activeSignatureId && resizeCorner) {
+      const deltaX = ((e.clientX - resizeStart.mouseX) / rect.width) * 100;
+      const deltaY = ((e.clientY - resizeStart.mouseY) / rect.height) * 100;
+      const minSize = 5;
+
+      setSignatures(prev => prev.map(sig => {
+        if (sig.id !== activeSignatureId) return sig;
+        let newX = sig.x, newY = sig.y, newWidth = sig.width, newHeight = sig.height;
+
+        if (resizeCorner === 'se') {
+          newWidth = Math.max(minSize, resizeStart.width + deltaX);
+          newHeight = Math.max(minSize, resizeStart.height + deltaY);
+        } else if (resizeCorner === 'sw') {
+          const widthChange = -deltaX;
+          newWidth = Math.max(minSize, resizeStart.width + widthChange);
+          newX = resizeStart.x - (newWidth - resizeStart.width);
+          newHeight = Math.max(minSize, resizeStart.height + deltaY);
+        } else if (resizeCorner === 'ne') {
+          newWidth = Math.max(minSize, resizeStart.width + deltaX);
+          const heightChange = -deltaY;
+          newHeight = Math.max(minSize, resizeStart.height + heightChange);
+          newY = resizeStart.y - (newHeight - resizeStart.height);
+        } else if (resizeCorner === 'nw') {
+          const widthChange = -deltaX;
+          const heightChange = -deltaY;
+          newWidth = Math.max(minSize, resizeStart.width + widthChange);
+          newHeight = Math.max(minSize, resizeStart.height + heightChange);
+          newX = resizeStart.x - (newWidth - resizeStart.width);
+          newY = resizeStart.y - (newHeight - resizeStart.height);
+        }
+
+        newX = Math.max(0, Math.min(100 - newWidth, newX));
+        newY = Math.max(0, Math.min(100 - newHeight, newY));
+        newWidth = Math.min(newWidth, 100 - newX);
+        newHeight = Math.min(newHeight, 100 - newY);
+
+        return { ...sig, x: newX, y: newY, width: newWidth, height: newHeight };
+      }));
+    }
   };
 
-  const handleMouseUp = () => setIsDragging(false);
+  const handleMouseUp = () => { setIsDragging(false); setIsResizing(false); setResizeCorner(null); };
+
+  const deleteSignature = (sigId: string) => {
+    setSignatures(prev => prev.filter(s => s.id !== sigId));
+    if (activeSignatureId === sigId) setActiveSignatureId(null);
+  };
 
   const handleSign = async () => {
     if (files.length === 0) { toast.error('Please upload a PDF file'); return; }
-    if (!signatureDataUrl) { toast.error('Please create a signature first'); return; }
-    if (!signaturePlacement) { toast.error('Please place your signature on the document'); return; }
+    if (signatures.length === 0) { toast.error('Please place at least one signature on the document'); return; }
     setIsProcessing(true);
     setProgress(0);
     try {
-      const placement: SignaturePlacement = { pageIndex: signaturePlacement.pageIndex, x: signaturePlacement.x, y: signaturePlacement.y, width: signaturePlacement.width, height: signaturePlacement.height };
-      const result = await signPdfWithCoordinates(files[0].file, signatureDataUrl, [placement], (current, total) => setProgress((current / total) * 100));
+      const placements: SignaturePlacement[] = signatures.map(sig => ({
+        pageIndex: sig.pageIndex,
+        x: sig.x,
+        y: sig.y,
+        width: sig.width,
+        height: sig.height,
+        dataUrl: sig.dataUrl,
+      }));
+      const result = await signPdfWithCoordinates(files[0].file, signatures[0].dataUrl, placements, (current, total) => setProgress((current / total) * 100));
       downloadBlob(result, files[0].name.replace('.pdf', '_signed.pdf'));
       toast.success('PDF signed successfully!');
     } catch (error) { toast.error('Failed to sign PDF'); } finally { setIsProcessing(false); setProgress(0); }
   };
 
-  const resetAll = () => { setFiles([]); setSignatureDataUrl(null); setSignaturePlacement(null); setPagesPreviews([]); setCurrentPageIndex(0); };
+  const resetAll = () => { setFiles([]); setSignatureDataUrl(null); setSignatures([]); setActiveSignatureId(null); setPagesPreviews([]); setCurrentPageIndex(0); };
 
   return (
     <ToolLayout title="Sign PDF" description="Add your signature to PDF documents" icon={PenLine} category="security" categoryColor="security">
@@ -294,24 +375,44 @@ const SignPdf = () => {
                   </div>
                   <div ref={previewContainerRef} className="relative bg-white rounded-lg shadow-lg overflow-hidden cursor-crosshair border" onClick={handlePageClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                     <img src={pagesPreviews[currentPageIndex]?.dataUrl} alt={`Page ${currentPageIndex + 1}`} className="w-full h-auto" draggable={false} />
-                    {signaturePlacement && signaturePlacement.pageIndex === currentPageIndex && signatureDataUrl && (
-                      <div className={cn("absolute cursor-move border-2 border-primary rounded bg-white/80 shadow-lg transition-shadow", isDragging ? "shadow-xl border-primary/80" : "hover:shadow-xl")} style={{ left: `${signaturePlacement.x}%`, top: `${signaturePlacement.y}%`, width: `${signaturePlacement.width}%`, height: `${signaturePlacement.height}%` }} onMouseDown={handleSignatureDragStart} onClick={(e) => e.stopPropagation()}>
-                        <img src={signatureDataUrl} alt="Signature" className="w-full h-full object-contain" draggable={false} />
+                    {signatures.filter(sig => sig.pageIndex === currentPageIndex).map((sig) => (
+                      <div 
+                        key={sig.id}
+                        className={cn(
+                          "absolute cursor-move border-2 rounded bg-white/80 shadow-lg transition-shadow",
+                          activeSignatureId === sig.id ? "border-primary shadow-xl z-10" : "border-primary/50 hover:shadow-xl"
+                        )}
+                        style={{ left: `${sig.x}%`, top: `${sig.y}%`, width: `${sig.width}%`, height: `${sig.height}%` }}
+                        onMouseDown={(e) => handleSignatureDragStart(e, sig.id)}
+                        onClick={(e) => { e.stopPropagation(); setActiveSignatureId(sig.id); }}
+                      >
+                        <img src={sig.dataUrl} alt="Signature" className="w-full h-full object-contain" draggable={false} />
                         <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1"><Move className="h-3 w-3" /></div>
+                        <button 
+                          className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:scale-110 transition-transform"
+                          onClick={(e) => { e.stopPropagation(); deleteSignature(sig.id); }}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                        {/* Resize handles */}
+                        <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'nw')} />
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'ne')} />
+                        <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'sw')} />
+                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'se')} />
                       </div>
-                    )}
-                    {signatureDataUrl && !signaturePlacement && (
+                    ))}
+                    {signatureDataUrl && signatures.length === 0 && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none"><div className="bg-background/90 px-4 py-2 rounded-lg shadow text-sm font-medium">Click to place signature</div></div>
                     )}
                   </div>
-                  {signaturePlacement && <p className="text-xs text-muted-foreground text-center">Drag signature to reposition • Placed on page {signaturePlacement.pageIndex + 1}</p>}
+                  {signatures.length > 0 && <p className="text-xs text-muted-foreground text-center">Drag to move • Corners to resize • {signatures.length} signature{signatures.length > 1 ? 's' : ''} placed</p>}
                 </div>
               )}
             </div>
             <div className="space-y-6">
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Create Your Signature</Label>
-                <Tabs value={signatureMode} onValueChange={(v) => { setSignatureMode(v as 'draw' | 'type' | 'upload'); setSignatureDataUrl(null); setSignaturePlacement(null); if (v === 'draw') setTimeout(initCanvas, 100); }}>
+                <Tabs value={signatureMode} onValueChange={(v) => { setSignatureMode(v as 'draw' | 'type' | 'upload'); setSignatureDataUrl(null); if (v === 'draw') setTimeout(initCanvas, 100); }}>
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="draw" className="gap-2"><Pencil className="h-4 w-4" />Draw</TabsTrigger>
                     <TabsTrigger value="type" className="gap-2"><Type className="h-4 w-4" />Type</TabsTrigger>
@@ -367,10 +468,10 @@ const SignPdf = () => {
                 </Tabs>
                 {signatureDataUrl && (<div className="space-y-2"><Label className="text-sm">Your Signature</Label><div className="p-4 border rounded-lg bg-white flex justify-center"><img src={signatureDataUrl} alt="Signature preview" className="max-h-16 object-contain" /></div></div>)}
               </div>
-              <Button onClick={handleSign} disabled={isProcessing || !signatureDataUrl || !signaturePlacement} className="w-full" size="lg">
+              <Button onClick={handleSign} disabled={isProcessing || signatures.length === 0} className="w-full" size="lg">
                 {isProcessing ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing... {Math.round(progress)}%</>) : (<><Download className="h-4 w-4 mr-2" />Download Signed PDF</>)}
               </Button>
-              {!signaturePlacement && signatureDataUrl && (<p className="text-sm text-muted-foreground text-center">Click on the PDF preview to place your signature</p>)}
+              {signatures.length === 0 && signatureDataUrl && (<p className="text-sm text-muted-foreground text-center">Click on the PDF preview to place your signature</p>)}
             </div>
           </div>
         )}
