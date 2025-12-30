@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move } from 'lucide-react';
+import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move, Copy } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -329,6 +329,19 @@ const SignPdf = () => {
     if (activeSignatureId === sigId) setActiveSignatureId(null);
   };
 
+  const duplicateSignature = (sigId: string) => {
+    const sig = signatures.find(s => s.id === sigId);
+    if (!sig) return;
+    const newSig: SignatureOnPage = {
+      ...sig,
+      id: `sig-${Date.now()}`,
+      x: Math.min(sig.x + 5, 100 - sig.width),
+      y: Math.min(sig.y + 5, 100 - sig.height),
+    };
+    setSignatures(prev => [...prev, newSig]);
+    setActiveSignatureId(newSig.id);
+  };
+
   const handleSign = async () => {
     if (files.length === 0) { toast.error('Please upload a PDF file'); return; }
     if (signatures.length === 0) { toast.error('Please place at least one signature on the document'); return; }
@@ -388,12 +401,22 @@ const SignPdf = () => {
                       >
                         <img src={sig.dataUrl} alt="Signature" className="w-full h-full object-contain" draggable={false} />
                         <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1"><Move className="h-3 w-3" /></div>
-                        <button 
-                          className="absolute -top-2 -left-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:scale-110 transition-transform"
-                          onClick={(e) => { e.stopPropagation(); deleteSignature(sig.id); }}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
+                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-1">
+                          <button 
+                            className="bg-primary text-primary-foreground rounded-full p-1 hover:scale-110 transition-transform"
+                            onClick={(e) => { e.stopPropagation(); duplicateSignature(sig.id); }}
+                            title="Duplicate"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
+                          <button 
+                            className="bg-destructive text-destructive-foreground rounded-full p-1 hover:scale-110 transition-transform"
+                            onClick={(e) => { e.stopPropagation(); deleteSignature(sig.id); }}
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                         {/* Resize handles */}
                         <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'nw')} />
                         <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'ne')} />
