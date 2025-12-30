@@ -109,8 +109,8 @@ const SignPdf = () => {
     context.scale(2, 2);
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, width, height);
+    // Clear with transparent background
+    context.clearRect(0, 0, width, height);
   }, []);
 
   useEffect(() => {
@@ -174,8 +174,8 @@ const SignPdf = () => {
     if (!canvas) return;
     const context = canvas.getContext('2d');
     if (!context) return;
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    // Clear with transparent background
+    context.clearRect(0, 0, canvas.width, canvas.height);
     setSignatureDataUrl(null);
   };
 
@@ -186,8 +186,8 @@ const SignPdf = () => {
     canvas.height = 100;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Transparent background for typed signatures
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const font = SIGNATURE_FONTS.find(f => f.id === selectedFont);
     ctx.font = `48px ${font?.fontFamily || "'Dancing Script', cursive"}`;
     ctx.fillStyle = getCurrentColor();
@@ -457,7 +457,7 @@ const SignPdf = () => {
                       </div>
                     </div>
                     <div ref={containerRef} className="relative">
-                      <canvas ref={canvasRef} className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-white touch-none" style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M12 20h9%27/%3E%3Cpath d=%27M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z%27/%3E%3C/svg%3E") 0 24, crosshair' }} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
+                      <canvas ref={canvasRef} className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg touch-none" style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M12 20h9%27/%3E%3Cpath d=%27M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z%27/%3E%3C/svg%3E") 0 24, crosshair', backgroundImage: 'linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px' }} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
                       <Button variant="ghost" size="sm" className="absolute top-2 right-2" onClick={clearCanvas}><RotateCcw className="h-4 w-4 mr-1" />Clear</Button>
                     </div>
                     <p className="text-sm text-muted-foreground text-center">Draw your signature in the box above</p>
