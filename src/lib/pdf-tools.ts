@@ -792,12 +792,13 @@ export type SignaturePlacement = {
   y: number; // Percentage from top (0-100)
   width: number; // Percentage of page width
   height: number; // Percentage of page height
+  dataUrl?: string; // Optional: individual signature image for this placement
 };
 
 // Add signature to PDF with exact coordinates
 export const signPdfWithCoordinates = async (
   file: File,
-  signatureDataUrl: string,
+  defaultSignatureDataUrl: string,
   placements: SignaturePlacement[],
   onPageProgress?: (currentPage: number, totalPages: number) => void
 ): Promise<Uint8Array> => {
@@ -805,20 +806,32 @@ export const signPdfWithCoordinates = async (
   const pdfDoc = await PDFDocument.load(arrayBuffer);
   const pages = pdfDoc.getPages();
   
-  // Extract base64 data from data URL
-  const base64Data = signatureDataUrl.split(',')[1];
-  const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+  // Cache for embedded images to avoid re-embedding same image
+  const imageCache = new Map<string, Awaited<ReturnType<typeof pdfDoc.embedPng>>>();
   
-  // Embed the signature image
-  const signatureImage = await pdfDoc.embedPng(imageBytes);
+  const embedImage = async (dataUrl: string) => {
+    if (imageCache.has(dataUrl)) {
+      return imageCache.get(dataUrl)!;
+    }
+    const base64Data = dataUrl.split(',')[1];
+    const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const image = await pdfDoc.embedPng(imageBytes);
+    imageCache.set(dataUrl, image);
+    return image;
+  };
   
-  for (const placement of placements) {
-    onPageProgress?.(placement.pageIndex + 1, pages.length);
+  for (let i = 0; i < placements.length; i++) {
+    const placement = placements[i];
+    onPageProgress?.(i + 1, placements.length);
     
     if (placement.pageIndex < 0 || placement.pageIndex >= pages.length) continue;
     
     const page = pages[placement.pageIndex];
     const { width, height } = page.getSize();
+    
+    // Use placement-specific dataUrl or fall back to default
+    const signatureDataUrl = placement.dataUrl || defaultSignatureDataUrl;
+    const signatureImage = await embedImage(signatureDataUrl);
     
     // Convert percentages to PDF coordinates
     // Note: PDF coordinates start from bottom-left, so we need to flip Y
