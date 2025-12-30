@@ -311,7 +311,7 @@ const SignPdf = () => {
             <div className="space-y-6">
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Create Your Signature</Label>
-                <Tabs value={signatureMode} onValueChange={(v) => setSignatureMode(v as 'draw' | 'type' | 'upload')}>
+                <Tabs value={signatureMode} onValueChange={(v) => { setSignatureMode(v as 'draw' | 'type' | 'upload'); setSignatureDataUrl(null); setSignaturePlacement(null); if (v === 'draw') setTimeout(initCanvas, 100); }}>
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="draw" className="gap-2"><Pencil className="h-4 w-4" />Draw</TabsTrigger>
                     <TabsTrigger value="type" className="gap-2"><Type className="h-4 w-4" />Type</TabsTrigger>
