@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move, Copy } from 'lucide-react';
+import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move, Copy, Undo2, Redo2 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -74,6 +74,10 @@ const SignPdf = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Undo/Redo history for canvas
+  const [canvasHistory, setCanvasHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   const getCurrentColor = () => SIGNATURE_COLORS.find(c => c.id === selectedColor)?.value || '#1a1a1a';
   const getCurrentThickness = () => SIGNATURE_THICKNESS.find(t => t.id === selectedThickness)?.value || 2.5;
@@ -160,7 +164,56 @@ const SignPdf = () => {
   };
 
   const stopDrawing = () => {
-    if (isDrawing) { setIsDrawing(false); saveSignature(); }
+    if (isDrawing) { 
+      setIsDrawing(false); 
+      saveSignature(); 
+      saveToHistory(); 
+    }
+  };
+  
+  const saveToHistory = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    setCanvasHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(dataUrl);
+      return newHistory;
+    });
+    setHistoryIndex(prev => prev + 1);
+  };
+  
+  const undo = () => {
+    if (historyIndex <= 0) {
+      clearCanvas();
+      setHistoryIndex(-1);
+      setCanvasHistory([]);
+      return;
+    }
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    restoreFromHistory(canvasHistory[newIndex]);
+  };
+  
+  const redo = () => {
+    if (historyIndex >= canvasHistory.length - 1) return;
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    restoreFromHistory(canvasHistory[newIndex]);
+  };
+  
+  const restoreFromHistory = (dataUrl: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const img = new Image();
+    img.onload = () => {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(img, 0, 0);
+      setSignatureDataUrl(canvas.toDataURL('image/png'));
+    };
+    img.src = dataUrl;
   };
 
   const saveSignature = () => {
@@ -177,6 +230,8 @@ const SignPdf = () => {
     // Clear with transparent background
     context.clearRect(0, 0, canvas.width, canvas.height);
     setSignatureDataUrl(null);
+    setCanvasHistory([]);
+    setHistoryIndex(-1);
   };
 
   const generateTypedSignature = useCallback(() => {
@@ -458,7 +513,11 @@ const SignPdf = () => {
                     </div>
                     <div ref={containerRef} className="relative">
                       <canvas ref={canvasRef} className="w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg touch-none" style={{ cursor: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%231a1a1a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M12 20h9%27/%3E%3Cpath d=%27M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z%27/%3E%3C/svg%3E") 0 24, crosshair', backgroundImage: 'linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px' }} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} />
-                      <Button variant="ghost" size="sm" className="absolute top-2 right-2" onClick={clearCanvas}><RotateCcw className="h-4 w-4 mr-1" />Clear</Button>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={undo} disabled={historyIndex < 0} title="Undo (Ctrl+Z)"><Undo2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={redo} disabled={historyIndex >= canvasHistory.length - 1} title="Redo (Ctrl+Y)"><Redo2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="sm" onClick={clearCanvas}><RotateCcw className="h-4 w-4 mr-1" />Clear</Button>
+                      </div>
                     </div>
                     <p className="text-sm text-muted-foreground text-center">Draw your signature in the box above</p>
                   </TabsContent>
