@@ -439,62 +439,94 @@ const SignPdf = () => {
               {isLoadingPages ? (
                 <div className="aspect-[3/4] bg-muted/50 rounded-lg flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
               ) : pagesPreviews.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Button variant="outline" size="sm" disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(i => i - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-                    <span className="text-sm text-muted-foreground">Page {currentPageIndex + 1} of {pagesPreviews.length}</span>
-                    <Button variant="outline" size="sm" disabled={currentPageIndex === pagesPreviews.length - 1} onClick={() => setCurrentPageIndex(i => i + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                <div className="flex gap-4">
+                  {/* Thumbnail sidebar */}
+                  <div className="hidden md:block w-24 shrink-0">
+                    <div className="space-y-2 max-h-[550px] overflow-y-auto pr-1">
+                      {pagesPreviews.map((page, index) => {
+                        const sigCount = signatures.filter(s => s.pageIndex === index).length;
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setCurrentPageIndex(index)}
+                            className={cn(
+                              "relative w-full rounded-lg border-2 overflow-hidden transition-all hover:border-primary/50",
+                              currentPageIndex === index ? "border-primary ring-2 ring-primary/20" : "border-muted"
+                            )}
+                          >
+                            <img src={page.dataUrl} alt={`Page ${index + 1}`} className="w-full h-auto" />
+                            <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs py-0.5 text-center">
+                              {index + 1}
+                            </div>
+                            {sigCount > 0 && (
+                              <div className="absolute top-1 right-1 bg-primary text-primary-foreground text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
+                                {sigCount}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Button variant="outline" size="sm" onClick={zoomOut} disabled={zoomLevel <= 50}><ZoomOut className="h-4 w-4" /></Button>
-                    <span className="text-sm text-muted-foreground w-14 text-center">{zoomLevel}%</span>
-                    <Button variant="outline" size="sm" onClick={zoomIn} disabled={zoomLevel >= 200}><ZoomIn className="h-4 w-4" /></Button>
-                  </div>
-                  <div className="overflow-auto max-h-[500px] border rounded-lg">
-                  <div ref={previewContainerRef} className="relative bg-white shadow-lg cursor-crosshair transition-transform origin-top-left" style={{ width: `${zoomLevel}%` }} onClick={handlePageClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
-                    <img src={pagesPreviews[currentPageIndex]?.dataUrl} alt={`Page ${currentPageIndex + 1}`} className="w-full h-auto" draggable={false} />
-                    {signatures.filter(sig => sig.pageIndex === currentPageIndex).map((sig) => (
-                      <div 
-                        key={sig.id}
-                        className={cn(
-                          "absolute cursor-move border-2 rounded bg-white/80 shadow-lg transition-shadow",
-                          activeSignatureId === sig.id ? "border-primary shadow-xl z-10" : "border-primary/50 hover:shadow-xl"
+                  
+                  {/* Main preview area */}
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Button variant="outline" size="sm" disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(i => i - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                      <span className="text-sm text-muted-foreground">Page {currentPageIndex + 1} of {pagesPreviews.length}</span>
+                      <Button variant="outline" size="sm" disabled={currentPageIndex === pagesPreviews.length - 1} onClick={() => setCurrentPageIndex(i => i + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Button variant="outline" size="sm" onClick={zoomOut} disabled={zoomLevel <= 50}><ZoomOut className="h-4 w-4" /></Button>
+                      <span className="text-sm text-muted-foreground w-14 text-center">{zoomLevel}%</span>
+                      <Button variant="outline" size="sm" onClick={zoomIn} disabled={zoomLevel >= 200}><ZoomIn className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="overflow-auto max-h-[500px] border rounded-lg">
+                      <div ref={previewContainerRef} className="relative bg-white shadow-lg cursor-crosshair transition-transform origin-top-left" style={{ width: `${zoomLevel}%` }} onClick={handlePageClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                        <img src={pagesPreviews[currentPageIndex]?.dataUrl} alt={`Page ${currentPageIndex + 1}`} className="w-full h-auto" draggable={false} />
+                        {signatures.filter(sig => sig.pageIndex === currentPageIndex).map((sig) => (
+                          <div 
+                            key={sig.id}
+                            className={cn(
+                              "absolute cursor-move border-2 rounded bg-white/80 shadow-lg transition-shadow",
+                              activeSignatureId === sig.id ? "border-primary shadow-xl z-10" : "border-primary/50 hover:shadow-xl"
+                            )}
+                            style={{ left: `${sig.x}%`, top: `${sig.y}%`, width: `${sig.width}%`, height: `${sig.height}%` }}
+                            onMouseDown={(e) => handleSignatureDragStart(e, sig.id)}
+                            onClick={(e) => { e.stopPropagation(); setActiveSignatureId(sig.id); }}
+                          >
+                            <img src={sig.dataUrl} alt="Signature" className="w-full h-full object-contain" draggable={false} />
+                            <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1"><Move className="h-3 w-3" /></div>
+                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-1">
+                              <button 
+                                className="bg-primary text-primary-foreground rounded-full p-1 hover:scale-110 transition-transform"
+                                onClick={(e) => { e.stopPropagation(); duplicateSignature(sig.id); }}
+                                title="Duplicate"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </button>
+                              <button 
+                                className="bg-destructive text-destructive-foreground rounded-full p-1 hover:scale-110 transition-transform"
+                                onClick={(e) => { e.stopPropagation(); deleteSignature(sig.id); }}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                            {/* Resize handles */}
+                            <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'nw')} />
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'ne')} />
+                            <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'sw')} />
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'se')} />
+                          </div>
+                        ))}
+                        {signatureDataUrl && signatures.length === 0 && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none"><div className="bg-background/90 px-4 py-2 rounded-lg shadow text-sm font-medium">Click to place signature</div></div>
                         )}
-                        style={{ left: `${sig.x}%`, top: `${sig.y}%`, width: `${sig.width}%`, height: `${sig.height}%` }}
-                        onMouseDown={(e) => handleSignatureDragStart(e, sig.id)}
-                        onClick={(e) => { e.stopPropagation(); setActiveSignatureId(sig.id); }}
-                      >
-                        <img src={sig.dataUrl} alt="Signature" className="w-full h-full object-contain" draggable={false} />
-                        <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1"><Move className="h-3 w-3" /></div>
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-1">
-                          <button 
-                            className="bg-primary text-primary-foreground rounded-full p-1 hover:scale-110 transition-transform"
-                            onClick={(e) => { e.stopPropagation(); duplicateSignature(sig.id); }}
-                            title="Duplicate"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </button>
-                          <button 
-                            className="bg-destructive text-destructive-foreground rounded-full p-1 hover:scale-110 transition-transform"
-                            onClick={(e) => { e.stopPropagation(); deleteSignature(sig.id); }}
-                            title="Delete"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                        {/* Resize handles */}
-                        <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-nw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'nw')} />
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-ne-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'ne')} />
-                        <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-primary rounded-full cursor-sw-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'sw')} />
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-primary rounded-full cursor-se-resize hover:scale-125 transition-transform" onMouseDown={(e) => handleResizeStart(e, sig.id, 'se')} />
                       </div>
-                    ))}
-                    {signatureDataUrl && signatures.length === 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none"><div className="bg-background/90 px-4 py-2 rounded-lg shadow text-sm font-medium">Click to place signature</div></div>
-                    )}
+                    </div>
+                    {signatures.length > 0 && <p className="text-xs text-muted-foreground text-center">Drag to move • Corners to resize • {signatures.length} signature{signatures.length > 1 ? 's' : ''} placed</p>}
                   </div>
-                  </div>
-                  {signatures.length > 0 && <p className="text-xs text-muted-foreground text-center">Drag to move • Corners to resize • {signatures.length} signature{signatures.length > 1 ? 's' : ''} placed</p>}
                 </div>
               )}
             </div>
