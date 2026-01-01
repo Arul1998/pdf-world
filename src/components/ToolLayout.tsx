@@ -33,7 +33,7 @@ export const ToolLayout = ({
 
   return (
     <Layout>
-      <div className="container py-8 md:py-12 max-w-5xl mx-auto">
+      <div className="container py-8 md:py-12 max-w-7xl mx-auto px-4 lg:px-8">
         {/* Back Link */}
         <Button variant="ghost" asChild className="mb-6 -ml-2">
           <Link to="/" className="text-muted-foreground hover:text-foreground">
