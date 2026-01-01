@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move, Copy, Undo2, Redo2 } from 'lucide-react';
+import { PenLine, Download, Loader2, Type, Pencil, Trash2, RotateCcw, Upload, ChevronLeft, ChevronRight, Move, Copy, Undo2, Redo2, ZoomIn, ZoomOut } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,7 @@ const SignPdf = () => {
   const [pagesPreviews, setPagesPreviews] = useState<PagePreview[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
   const [signatures, setSignatures] = useState<SignatureOnPage[]>([]);
   const [activeSignatureId, setActiveSignatureId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -417,7 +418,10 @@ const SignPdf = () => {
     } catch (error) { toast.error('Failed to sign PDF'); } finally { setIsProcessing(false); setProgress(0); }
   };
 
-  const resetAll = () => { setFiles([]); setSignatureDataUrl(null); setSignatures([]); setActiveSignatureId(null); setPagesPreviews([]); setCurrentPageIndex(0); };
+  const resetAll = () => { setFiles([]); setSignatureDataUrl(null); setSignatures([]); setActiveSignatureId(null); setPagesPreviews([]); setCurrentPageIndex(0); setZoomLevel(100); };
+
+  const zoomIn = () => setZoomLevel(prev => Math.min(prev + 25, 200));
+  const zoomOut = () => setZoomLevel(prev => Math.max(prev - 25, 50));
 
   return (
     <ToolLayout title="Sign PDF" description="Add your signature to PDF documents" icon={PenLine} category="security" categoryColor="security">
@@ -441,7 +445,13 @@ const SignPdf = () => {
                     <span className="text-sm text-muted-foreground">Page {currentPageIndex + 1} of {pagesPreviews.length}</span>
                     <Button variant="outline" size="sm" disabled={currentPageIndex === pagesPreviews.length - 1} onClick={() => setCurrentPageIndex(i => i + 1)}><ChevronRight className="h-4 w-4" /></Button>
                   </div>
-                  <div ref={previewContainerRef} className="relative bg-white rounded-lg shadow-lg overflow-hidden cursor-crosshair border" onClick={handlePageClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Button variant="outline" size="sm" onClick={zoomOut} disabled={zoomLevel <= 50}><ZoomOut className="h-4 w-4" /></Button>
+                    <span className="text-sm text-muted-foreground w-14 text-center">{zoomLevel}%</span>
+                    <Button variant="outline" size="sm" onClick={zoomIn} disabled={zoomLevel >= 200}><ZoomIn className="h-4 w-4" /></Button>
+                  </div>
+                  <div className="overflow-auto max-h-[500px] border rounded-lg">
+                  <div ref={previewContainerRef} className="relative bg-white shadow-lg cursor-crosshair transition-transform origin-top-left" style={{ width: `${zoomLevel}%` }} onClick={handlePageClick} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
                     <img src={pagesPreviews[currentPageIndex]?.dataUrl} alt={`Page ${currentPageIndex + 1}`} className="w-full h-auto" draggable={false} />
                     {signatures.filter(sig => sig.pageIndex === currentPageIndex).map((sig) => (
                       <div 
@@ -482,6 +492,7 @@ const SignPdf = () => {
                     {signatureDataUrl && signatures.length === 0 && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 pointer-events-none"><div className="bg-background/90 px-4 py-2 rounded-lg shadow text-sm font-medium">Click to place signature</div></div>
                     )}
+                  </div>
                   </div>
                   {signatures.length > 0 && <p className="text-xs text-muted-foreground text-center">Drag to move • Corners to resize • {signatures.length} signature{signatures.length > 1 ? 's' : ''} placed</p>}
                 </div>
