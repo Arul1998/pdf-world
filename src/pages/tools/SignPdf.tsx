@@ -430,8 +430,8 @@ const SignPdf = () => {
         {files.length === 0 ? (
           <FileDropZone accept={['.pdf']} multiple={false} files={files} onFilesChange={setFiles} />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3 space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-base font-semibold">PDF Preview</Label>
                 <Button variant="ghost" size="sm" onClick={resetAll}><Trash2 className="h-4 w-4 mr-1" />New File</Button>
@@ -498,7 +498,7 @@ const SignPdf = () => {
                 </div>
               )}
             </div>
-            <div className="space-y-6">
+            <div className="lg:col-span-2 space-y-6">
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Create Your Signature</Label>
                 <Tabs value={signatureMode} onValueChange={(v) => { setSignatureMode(v as 'draw' | 'type' | 'upload'); setSignatureDataUrl(null); if (v === 'draw') setTimeout(initCanvas, 100); }}>
