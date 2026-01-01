@@ -241,7 +241,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-word',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-to-word-ocr',
