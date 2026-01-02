@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFFile } from '@/lib/pdf-tools';
@@ -20,9 +21,17 @@ interface PagePreview {
   height: number;
 }
 
+interface ExtractedImage {
+  data: Uint8Array;
+  width: number;
+  height: number;
+  pageNumber: number;
+}
+
 interface ExtractedPage {
   pageNumber: number;
   textContent: string[];
+  images: ExtractedImage[];
 }
 
 const PdfToWord = () => {
@@ -33,6 +42,7 @@ const PdfToWord = () => {
   const [pagesPreviews, setPagesPreviews] = useState<PagePreview[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
+  const [includeImages, setIncludeImages] = useState(true);
 
   // Load PDF previews
   useEffect(() => {
@@ -78,7 +88,100 @@ const PdfToWord = () => {
     loadPreviews();
   }, [files]);
 
-  const extractTextFromPdf = async (file: File): Promise<ExtractedPage[]> => {
+  const extractImagesFromPage = async (page: any, pageNumber: number): Promise<ExtractedImage[]> => {
+    const images: ExtractedImage[] = [];
+    
+    try {
+      const operatorList = await page.getOperatorList();
+      const commonObjs = page.commonObjs;
+      const objs = page.objs;
+      
+      for (let i = 0; i < operatorList.fnArray.length; i++) {
+        const fn = operatorList.fnArray[i];
+        // OPS.paintImageXObject = 85, OPS.paintInlineImageXObject = 86
+        if (fn === 85 || fn === 86) {
+          const imgName = operatorList.argsArray[i][0];
+          let imgData: any = null;
+          
+          try {
+            // Try to get from page objects first, then common objects
+            if (objs.has(imgName)) {
+              imgData = objs.get(imgName);
+            } else if (commonObjs.has(imgName)) {
+              imgData = commonObjs.get(imgName);
+            }
+            
+            if (imgData && imgData.bitmap) {
+              // Convert ImageBitmap to PNG data
+              const canvas = document.createElement('canvas');
+              canvas.width = imgData.bitmap.width;
+              canvas.height = imgData.bitmap.height;
+              const ctx = canvas.getContext('2d');
+              
+              if (ctx) {
+                ctx.drawImage(imgData.bitmap, 0, 0);
+                const dataUrl = canvas.toDataURL('image/png');
+                const base64Data = dataUrl.split(',')[1];
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let j = 0; j < binaryString.length; j++) {
+                  bytes[j] = binaryString.charCodeAt(j);
+                }
+                
+                // Only include images larger than 50x50 pixels (skip tiny icons/artifacts)
+                if (imgData.bitmap.width > 50 && imgData.bitmap.height > 50) {
+                  images.push({
+                    data: bytes,
+                    width: imgData.bitmap.width,
+                    height: imgData.bitmap.height,
+                    pageNumber,
+                  });
+                }
+              }
+            } else if (imgData && imgData.data) {
+              // Handle raw image data format
+              const canvas = document.createElement('canvas');
+              canvas.width = imgData.width;
+              canvas.height = imgData.height;
+              const ctx = canvas.getContext('2d');
+              
+              if (ctx && imgData.width > 50 && imgData.height > 50) {
+                const imgDataObj = new ImageData(
+                  new Uint8ClampedArray(imgData.data),
+                  imgData.width,
+                  imgData.height
+                );
+                ctx.putImageData(imgDataObj, 0, 0);
+                const dataUrl = canvas.toDataURL('image/png');
+                const base64Data = dataUrl.split(',')[1];
+                const binaryString = atob(base64Data);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let j = 0; j < binaryString.length; j++) {
+                  bytes[j] = binaryString.charCodeAt(j);
+                }
+                
+                images.push({
+                  data: bytes,
+                  width: imgData.width,
+                  height: imgData.height,
+                  pageNumber,
+                });
+              }
+            }
+          } catch (imgError) {
+            // Skip problematic images
+            console.warn('Failed to extract image:', imgError);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Error extracting images from page:', error);
+    }
+    
+    return images;
+  };
+
+  const extractTextFromPdf = async (file: File, extractImages: boolean): Promise<ExtractedPage[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: ExtractedPage[] = [];
@@ -87,6 +190,12 @@ const PdfToWord = () => {
       setProgress((i / pdf.numPages) * 50);
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
+      
+      // Extract images if enabled
+      let pageImages: ExtractedImage[] = [];
+      if (extractImages) {
+        pageImages = await extractImagesFromPage(page, i);
+      }
       
       // Group text items by their y position to form lines
       const lines: { y: number; text: string }[] = [];
@@ -109,6 +218,7 @@ const PdfToWord = () => {
       pages.push({
         pageNumber: i,
         textContent: lines.map(l => l.text.trim()).filter(t => t),
+        images: pageImages,
       });
     }
 
@@ -172,6 +282,52 @@ const PdfToWord = () => {
         );
       });
 
+      // Add images from this page
+      if (page.images.length > 0) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Images from page ${page.pageNumber}:`,
+                italics: true,
+                size: 20,
+                color: '888888',
+              }),
+            ],
+            spacing: { before: 200, after: 100 },
+          })
+        );
+
+        page.images.forEach((img) => {
+          // Scale image to fit within reasonable document width (max 500px width)
+          const maxWidth = 500;
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > maxWidth) {
+            const scale = maxWidth / width;
+            width = maxWidth;
+            height = Math.round(height * scale);
+          }
+
+          children.push(
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  data: img.data,
+                  transformation: {
+                    width,
+                    height,
+                  },
+                  type: 'png',
+                }),
+              ],
+              spacing: { after: 200 },
+            })
+          );
+        });
+      }
+
       setProgress(50 + ((pageIndex + 1) / pages.length) * 50);
     });
 
@@ -198,8 +354,11 @@ const PdfToWord = () => {
 
     try {
       // Extract text from PDF
-      const pages = await extractTextFromPdf(files[0].file);
+      const pages = await extractTextFromPdf(files[0].file, includeImages);
       setExtractedPages(pages);
+
+      // Count total images
+      const totalImages = pages.reduce((sum, p) => sum + p.images.length, 0);
 
       // Create Word document
       const wordBlob = await createWordDocument(pages);
@@ -208,7 +367,10 @@ const PdfToWord = () => {
       const fileName = files[0].name.replace('.pdf', '.docx');
       saveAs(wordBlob, fileName);
 
-      toast.success('PDF converted to Word successfully!');
+      const imageMsg = includeImages && totalImages > 0 
+        ? ` (${totalImages} image${totalImages > 1 ? 's' : ''} included)` 
+        : '';
+      toast.success(`PDF converted to Word successfully!${imageMsg}`);
     } catch (error) {
       console.error('Conversion error:', error);
       toast.error('Failed to convert PDF to Word');
@@ -330,9 +492,31 @@ const PdfToWord = () => {
                 </div>
               </div>
 
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Options</Label>
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">Include Images</p>
+                        <p className="text-xs text-muted-foreground">
+                          Extract and embed images in Word
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={includeImages}
+                      onCheckedChange={setIncludeImages}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="p-4 border rounded-lg bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
                 <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Note:</strong> This tool extracts text content from PDF. Complex layouts, images, and formatting may not be perfectly preserved.
+                  <strong>Note:</strong> This tool extracts text content from PDF. Complex layouts and formatting may not be perfectly preserved.
+                  {includeImages && ' Images larger than 50x50 pixels will be included.'}
                 </p>
               </div>
 
