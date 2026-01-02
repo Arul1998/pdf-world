@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
+import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Imag
 import { saveAs } from 'file-saver';
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFFile } from '@/lib/pdf-tools';
+import Tesseract from 'tesseract.js';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
@@ -31,6 +32,7 @@ interface ExtractedImage {
 interface ExtractedPage {
   pageNumber: number;
   textContent: string[];
+  ocrText: string[];
   images: ExtractedImage[];
 }
 
@@ -38,11 +40,13 @@ const PdfToWord = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
   const [extractedPages, setExtractedPages] = useState<ExtractedPage[]>([]);
   const [pagesPreviews, setPagesPreviews] = useState<PagePreview[]>([]);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [includeImages, setIncludeImages] = useState(true);
+  const [enableOcr, setEnableOcr] = useState(false);
 
   // Load PDF previews
   useEffect(() => {
@@ -181,13 +185,64 @@ const PdfToWord = () => {
     return images;
   };
 
-  const extractTextFromPdf = async (file: File, extractImages: boolean): Promise<ExtractedPage[]> => {
+  const performOcrOnPage = async (page: any, pageNumber: number, totalPages: number): Promise<string[]> => {
+    try {
+      // Render page at higher resolution for better OCR
+      const scale = 2.0;
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      
+      if (!context) return [];
+      
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      
+      // Convert canvas to blob for Tesseract
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), 'image/png');
+      });
+      
+      setProgressMessage(`OCR: Processing page ${pageNumber}/${totalPages}...`);
+      
+      // Perform OCR using Tesseract
+      const result = await Tesseract.recognize(blob, 'eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            const ocrProgress = m.progress || 0;
+            const baseProgress = 25 + ((pageNumber - 1) / totalPages) * 25;
+            const pageProgress = (ocrProgress / totalPages) * 25;
+            setProgress(baseProgress + pageProgress);
+          }
+        },
+      });
+      
+      // Split recognized text into lines
+      const lines = result.data.text
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+      
+      return lines;
+    } catch (error) {
+      console.warn('OCR error on page', pageNumber, error);
+      return [];
+    }
+  };
+
+  const extractTextFromPdf = async (file: File, extractImages: boolean, useOcr: boolean): Promise<ExtractedPage[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: ExtractedPage[] = [];
+    const totalPages = pdf.numPages;
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      setProgress((i / pdf.numPages) * 50);
+    for (let i = 1; i <= totalPages; i++) {
+      const baseProgress = useOcr ? (i / totalPages) * 25 : (i / totalPages) * 50;
+      setProgress(baseProgress);
+      setProgressMessage(`Extracting text from page ${i}/${totalPages}...`);
+      
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       
@@ -218,8 +273,26 @@ const PdfToWord = () => {
       pages.push({
         pageNumber: i,
         textContent: lines.map(l => l.text.trim()).filter(t => t),
+        ocrText: [],
         images: pageImages,
       });
+    }
+
+    // Perform OCR if enabled and pages have little to no text
+    if (useOcr) {
+      setProgressMessage('Initializing OCR engine...');
+      
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i];
+        // Check if page has very little text (likely scanned)
+        const hasLittleText = page.textContent.join(' ').length < 50;
+        
+        if (hasLittleText) {
+          const pdfPage = await pdf.getPage(page.pageNumber);
+          const ocrLines = await performOcrOnPage(pdfPage, page.pageNumber, totalPages);
+          page.ocrText = ocrLines;
+        }
+      }
     }
 
     return pages;
@@ -227,8 +300,12 @@ const PdfToWord = () => {
 
   const createWordDocument = async (pages: ExtractedPage[]): Promise<Blob> => {
     const children: Paragraph[] = [];
+    const totalPages = pages.length;
 
     pages.forEach((page, pageIndex) => {
+      setProgress(50 + ((pageIndex + 1) / totalPages) * 50);
+      setProgressMessage(`Creating Word document: page ${pageIndex + 1}/${totalPages}...`);
+      
       // Add page header
       if (pageIndex > 0) {
         children.push(new Paragraph({ text: '', spacing: { after: 400 } }));
@@ -262,8 +339,27 @@ const PdfToWord = () => {
         })
       );
 
-      // Add text content
-      page.textContent.forEach((line, lineIndex) => {
+      // Add text content (prioritize regular text, fall back to OCR)
+      const textToUse = page.textContent.length > 0 ? page.textContent : page.ocrText;
+      const isOcrText = page.textContent.length === 0 && page.ocrText.length > 0;
+      
+      if (isOcrText) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: '(Text extracted via OCR)',
+                italics: true,
+                size: 18,
+                color: '888888',
+              }),
+            ],
+            spacing: { after: 100 },
+          })
+        );
+      }
+      
+      textToUse.forEach((line, lineIndex) => {
         // Detect if line might be a heading (short, possibly bold in original)
         const isHeading = line.length < 100 && lineIndex < 3 && line === line.toUpperCase();
         
@@ -327,8 +423,6 @@ const PdfToWord = () => {
           );
         });
       }
-
-      setProgress(50 + ((pageIndex + 1) / pages.length) * 50);
     });
 
     const doc = new Document({
@@ -351,14 +445,16 @@ const PdfToWord = () => {
 
     setIsProcessing(true);
     setProgress(0);
+    setProgressMessage('Starting conversion...');
 
     try {
       // Extract text from PDF
-      const pages = await extractTextFromPdf(files[0].file, includeImages);
+      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr);
       setExtractedPages(pages);
 
-      // Count total images
+      // Count totals
       const totalImages = pages.reduce((sum, p) => sum + p.images.length, 0);
+      const ocrPages = pages.filter(p => p.ocrText.length > 0).length;
 
       // Create Word document
       const wordBlob = await createWordDocument(pages);
@@ -367,16 +463,21 @@ const PdfToWord = () => {
       const fileName = files[0].name.replace('.pdf', '.docx');
       saveAs(wordBlob, fileName);
 
-      const imageMsg = includeImages && totalImages > 0 
-        ? ` (${totalImages} image${totalImages > 1 ? 's' : ''} included)` 
-        : '';
-      toast.success(`PDF converted to Word successfully!${imageMsg}`);
+      let successMsg = 'PDF converted to Word successfully!';
+      if (includeImages && totalImages > 0) {
+        successMsg += ` ${totalImages} image${totalImages > 1 ? 's' : ''} included.`;
+      }
+      if (enableOcr && ocrPages > 0) {
+        successMsg += ` OCR applied to ${ocrPages} page${ocrPages > 1 ? 's' : ''}.`;
+      }
+      toast.success(successMsg);
     } catch (error) {
       console.error('Conversion error:', error);
       toast.error('Failed to convert PDF to Word');
     } finally {
       setIsProcessing(false);
       setProgress(0);
+      setProgressMessage('');
     }
   };
 
@@ -510,6 +611,24 @@ const PdfToWord = () => {
                       onCheckedChange={setIncludeImages}
                     />
                   </div>
+                  
+                  <div className="border-t pt-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <ScanText className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">OCR for Scanned PDFs</p>
+                          <p className="text-xs text-muted-foreground">
+                            Extract text from scanned pages
+                          </p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={enableOcr}
+                        onCheckedChange={setEnableOcr}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -517,13 +636,14 @@ const PdfToWord = () => {
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   <strong>Note:</strong> This tool extracts text content from PDF. Complex layouts and formatting may not be perfectly preserved.
                   {includeImages && ' Images larger than 50x50 pixels will be included.'}
+                  {enableOcr && ' OCR will be applied to pages with little or no text.'}
                 </p>
               </div>
 
               {isProcessing && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Converting...</span>
+                    <span>{progressMessage || 'Converting...'}</span>
                     <span>{Math.round(progress)}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
