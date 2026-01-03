@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun } from 'docx';
 
@@ -72,7 +73,7 @@ const PdfToWord = () => {
   const [isLoadingPages, setIsLoadingPages] = useState(false);
   const [includeImages, setIncludeImages] = useState(true);
   const [enableOcr, setEnableOcr] = useState(false);
-  const [ocrLanguage, setOcrLanguage] = useState('eng');
+  const [ocrLanguages, setOcrLanguages] = useState<string[]>(['eng']);
 
   // Load PDF previews
   useEffect(() => {
@@ -211,7 +212,7 @@ const PdfToWord = () => {
     return images;
   };
 
-  const performOcrOnPage = async (page: any, pageNumber: number, totalPages: number, language: string): Promise<string[]> => {
+  const performOcrOnPage = async (page: any, pageNumber: number, totalPages: number, languages: string[]): Promise<string[]> => {
     try {
       // Render page at higher resolution for better OCR
       const scale = 2.0;
@@ -231,11 +232,13 @@ const PdfToWord = () => {
         canvas.toBlob((b) => resolve(b!), 'image/png');
       });
       
-      const langName = OCR_LANGUAGES.find(l => l.code === language)?.name || language;
-      setProgressMessage(`OCR (${langName}): Processing page ${pageNumber}/${totalPages}...`);
+      // Join multiple languages with + for Tesseract
+      const langString = languages.join('+');
+      const langNames = languages.map(l => OCR_LANGUAGES.find(lang => lang.code === l)?.name || l).join(', ');
+      setProgressMessage(`OCR (${langNames}): Processing page ${pageNumber}/${totalPages}...`);
       
-      // Perform OCR using Tesseract with selected language
-      const result = await Tesseract.recognize(blob, language, {
+      // Perform OCR using Tesseract with selected languages
+      const result = await Tesseract.recognize(blob, langString, {
         logger: (m) => {
           if (m.status === 'recognizing text') {
             const ocrProgress = m.progress || 0;
@@ -259,7 +262,7 @@ const PdfToWord = () => {
     }
   };
 
-  const extractTextFromPdf = async (file: File, extractImages: boolean, useOcr: boolean, language: string): Promise<ExtractedPage[]> => {
+  const extractTextFromPdf = async (file: File, extractImages: boolean, useOcr: boolean, languages: string[]): Promise<ExtractedPage[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: ExtractedPage[] = [];
@@ -307,8 +310,8 @@ const PdfToWord = () => {
 
     // Perform OCR if enabled and pages have little to no text
     if (useOcr) {
-      const langName = OCR_LANGUAGES.find(l => l.code === language)?.name || language;
-      setProgressMessage(`Initializing OCR engine (${langName})...`);
+      const langNames = languages.map(l => OCR_LANGUAGES.find(lang => lang.code === l)?.name || l).join(', ');
+      setProgressMessage(`Initializing OCR engine (${langNames})...`);
       
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
@@ -317,7 +320,7 @@ const PdfToWord = () => {
         
         if (hasLittleText) {
           const pdfPage = await pdf.getPage(page.pageNumber);
-          const ocrLines = await performOcrOnPage(pdfPage, page.pageNumber, totalPages, language);
+          const ocrLines = await performOcrOnPage(pdfPage, page.pageNumber, totalPages, languages);
           page.ocrText = ocrLines;
         }
       }
@@ -477,7 +480,7 @@ const PdfToWord = () => {
 
     try {
       // Extract text from PDF
-      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguage);
+      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguages);
       setExtractedPages(pages);
 
       // Count totals
@@ -662,24 +665,45 @@ const PdfToWord = () => {
                         <div className="flex items-center gap-3">
                           <Languages className="h-5 w-5 text-muted-foreground" />
                           <div className="flex-1">
-                            <p className="font-medium text-sm">OCR Language</p>
+                            <p className="font-medium text-sm">OCR Languages</p>
                             <p className="text-xs text-muted-foreground">
-                              Select the language of the scanned document
+                              Select languages for multilingual documents
                             </p>
                           </div>
                         </div>
-                        <Select value={ocrLanguage} onValueChange={setOcrLanguage}>
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                          <SelectContent>
+                        <ScrollArea className="h-48 border rounded-md p-2 bg-background">
+                          <div className="space-y-2">
                             {OCR_LANGUAGES.map((lang) => (
-                              <SelectItem key={lang.code} value={lang.code}>
-                                {lang.name}
-                              </SelectItem>
+                              <div key={lang.code} className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`lang-${lang.code}`}
+                                  checked={ocrLanguages.includes(lang.code)}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setOcrLanguages(prev => [...prev, lang.code]);
+                                    } else {
+                                      // Don't allow deselecting if it's the last one
+                                      if (ocrLanguages.length > 1) {
+                                        setOcrLanguages(prev => prev.filter(l => l !== lang.code));
+                                      }
+                                    }
+                                  }}
+                                />
+                                <label
+                                  htmlFor={`lang-${lang.code}`}
+                                  className="text-sm cursor-pointer flex-1"
+                                >
+                                  {lang.name}
+                                </label>
+                              </div>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </div>
+                        </ScrollArea>
+                        {ocrLanguages.length > 1 && (
+                          <p className="text-xs text-muted-foreground">
+                            Selected: {ocrLanguages.map(l => OCR_LANGUAGES.find(lang => lang.code === l)?.name).join(', ')}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
