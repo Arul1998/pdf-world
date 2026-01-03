@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages, AlignLeft } from 'lucide-react';
+import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages, AlignLeft, X, Archive } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, ImageRun } from 'docx';
+import JSZip from 'jszip';
 
 // Common OCR languages supported by Tesseract.js
 const OCR_LANGUAGES = [
@@ -87,17 +88,21 @@ const PdfToWord = () => {
   const [enableOcr, setEnableOcr] = useState(false);
   const [ocrLanguages, setOcrLanguages] = useState<string[]>(['eng']);
   const [preserveFormatting, setPreserveFormatting] = useState(true);
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
 
-  // Load PDF previews
+  // Load PDF previews for selected file
   useEffect(() => {
     const loadPreviews = async () => {
       if (files.length === 0) {
         setPagesPreviews([]);
         return;
       }
+      const currentFile = files[selectedFileIndex] || files[0];
+      if (!currentFile) return;
+      
       setIsLoadingPages(true);
       try {
-        const arrayBuffer = await files[0].file.arrayBuffer();
+        const arrayBuffer = await currentFile.file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const previews: PagePreview[] = [];
         
@@ -126,11 +131,11 @@ const PdfToWord = () => {
         console.error('Failed to load previews:', error);
         toast.error('Failed to load PDF preview');
       } finally {
-        setIsLoadingPages(false);
-      }
-    };
-    loadPreviews();
-  }, [files]);
+      setIsLoadingPages(false);
+    }
+  };
+  loadPreviews();
+}, [files, selectedFileIndex]);
 
   const extractImagesFromPage = async (page: any, pageNumber: number): Promise<ExtractedImage[]> => {
     const images: ExtractedImage[] = [];
@@ -597,7 +602,7 @@ const PdfToWord = () => {
 
   const handleConvert = async () => {
     if (files.length === 0) {
-      toast.error('Please upload a PDF file');
+      toast.error('Please upload PDF file(s)');
       return;
     }
 
@@ -606,36 +611,78 @@ const PdfToWord = () => {
     setProgressMessage('Starting conversion...');
 
     try {
-      // Extract text from PDF
-      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguages, preserveFormatting);
-      setExtractedPages(pages);
+      const isBatch = files.length > 1;
+      
+      if (isBatch) {
+        // Batch conversion with ZIP
+        const zip = new JSZip();
+        let totalImages = 0;
+        let totalOcrPages = 0;
+        
+        for (let fileIdx = 0; fileIdx < files.length; fileIdx++) {
+          const file = files[fileIdx];
+          const fileProgress = (fileIdx / files.length) * 100;
+          setProgress(fileProgress);
+          setProgressMessage(`Converting ${file.name} (${fileIdx + 1}/${files.length})...`);
+          
+          const pages = await extractTextFromPdf(file.file, includeImages, enableOcr, ocrLanguages, preserveFormatting);
+          totalImages += pages.reduce((sum, p) => sum + p.images.length, 0);
+          totalOcrPages += pages.filter(p => p.ocrText.length > 0).length;
+          
+          const wordBlob = await createWordDocument(pages);
+          const fileName = file.name.replace('.pdf', '.docx');
+          zip.file(fileName, wordBlob);
+        }
+        
+        setProgressMessage('Creating ZIP archive...');
+        setProgress(95);
+        
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        saveAs(zipBlob, 'converted-documents.zip');
+        
+        let successMsg = `${files.length} PDFs converted successfully!`;
+        if (includeImages && totalImages > 0) {
+          successMsg += ` ${totalImages} image${totalImages > 1 ? 's' : ''} included.`;
+        }
+        if (enableOcr && totalOcrPages > 0) {
+          successMsg += ` OCR applied to ${totalOcrPages} page${totalOcrPages > 1 ? 's' : ''}.`;
+        }
+        toast.success(successMsg);
+      } else {
+        // Single file conversion
+        const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguages, preserveFormatting);
+        setExtractedPages(pages);
 
-      // Count totals
-      const totalImages = pages.reduce((sum, p) => sum + p.images.length, 0);
-      const ocrPages = pages.filter(p => p.ocrText.length > 0).length;
+        const totalImages = pages.reduce((sum, p) => sum + p.images.length, 0);
+        const ocrPages = pages.filter(p => p.ocrText.length > 0).length;
 
-      // Create Word document
-      const wordBlob = await createWordDocument(pages);
+        const wordBlob = await createWordDocument(pages);
+        const fileName = files[0].name.replace('.pdf', '.docx');
+        saveAs(wordBlob, fileName);
 
-      // Download the file
-      const fileName = files[0].name.replace('.pdf', '.docx');
-      saveAs(wordBlob, fileName);
-
-      let successMsg = 'PDF converted to Word successfully!';
-      if (includeImages && totalImages > 0) {
-        successMsg += ` ${totalImages} image${totalImages > 1 ? 's' : ''} included.`;
+        let successMsg = 'PDF converted to Word successfully!';
+        if (includeImages && totalImages > 0) {
+          successMsg += ` ${totalImages} image${totalImages > 1 ? 's' : ''} included.`;
+        }
+        if (enableOcr && ocrPages > 0) {
+          successMsg += ` OCR applied to ${ocrPages} page${ocrPages > 1 ? 's' : ''}.`;
+        }
+        toast.success(successMsg);
       }
-      if (enableOcr && ocrPages > 0) {
-        successMsg += ` OCR applied to ${ocrPages} page${ocrPages > 1 ? 's' : ''}.`;
-      }
-      toast.success(successMsg);
     } catch (error) {
       console.error('Conversion error:', error);
-      toast.error('Failed to convert PDF to Word');
+      toast.error('Failed to convert PDF(s) to Word');
     } finally {
       setIsProcessing(false);
       setProgress(0);
       setProgressMessage('');
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
+    if (selectedFileIndex >= index && selectedFileIndex > 0) {
+      setSelectedFileIndex(prev => prev - 1);
     }
   };
 
@@ -644,6 +691,7 @@ const PdfToWord = () => {
     setExtractedPages([]);
     setPagesPreviews([]);
     setCurrentPageIndex(0);
+    setSelectedFileIndex(0);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -664,7 +712,7 @@ const PdfToWord = () => {
         {files.length === 0 ? (
           <FileDropZone
             accept={['.pdf']}
-            multiple={false}
+            multiple={true}
             files={files}
             onFilesChange={setFiles}
           />
@@ -673,10 +721,12 @@ const PdfToWord = () => {
             {/* PDF Preview */}
             <div className="lg:col-span-3 space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">PDF Preview</Label>
+                <Label className="text-base font-semibold">
+                  PDF Preview {files.length > 1 && `(${selectedFileIndex + 1}/${files.length})`}
+                </Label>
                 <Button variant="ghost" size="sm" onClick={resetAll}>
                   <Trash2 className="h-4 w-4 mr-1" />
-                  New File
+                  Clear All
                 </Button>
               </div>
 
@@ -722,18 +772,70 @@ const PdfToWord = () => {
             {/* Conversion Options */}
             <div className="lg:col-span-2 space-y-6">
               <div className="space-y-4">
-                <Label className="text-base font-semibold">File Details</Label>
-                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-10 w-10 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{files[0].name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatFileSize(files[0].size)}
-                      </p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">
+                    Files ({files.length})
+                  </Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => document.getElementById('add-more-files')?.click()}
+                  >
+                    Add More
+                  </Button>
+                  <input
+                    id="add-more-files"
+                    type="file"
+                    accept=".pdf"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const newFiles = Array.from(e.target.files || []).map(file => ({
+                        id: crypto.randomUUID(),
+                        file,
+                        name: file.name,
+                        size: file.size,
+                      }));
+                      setFiles(prev => [...prev, ...newFiles]);
+                      e.target.value = '';
+                    }}
+                  />
                 </div>
+                <ScrollArea className="h-40 border rounded-lg bg-muted/30">
+                  <div className="p-2 space-y-2">
+                    {files.map((file, index) => (
+                      <div
+                        key={file.id}
+                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
+                          selectedFileIndex === index ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted'
+                        }`}
+                        onClick={() => {
+                          setSelectedFileIndex(index);
+                          setCurrentPageIndex(0);
+                        }}
+                      >
+                        <FileText className="h-6 w-6 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeFile(index);
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </div>
 
               <div className="space-y-4">
@@ -858,6 +960,7 @@ const PdfToWord = () => {
                   <strong>Note:</strong> This tool extracts text content from PDF. Complex layouts and formatting may not be perfectly preserved.
                   {includeImages && ' Images larger than 50x50 pixels will be included.'}
                   {enableOcr && ' OCR will be applied to pages with little or no text.'}
+                  {files.length > 1 && ' Multiple files will be downloaded as a ZIP archive.'}
                 </p>
               </div>
 
@@ -881,6 +984,11 @@ const PdfToWord = () => {
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Converting...
+                  </>
+                ) : files.length > 1 ? (
+                  <>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Convert {files.length} PDFs & Download ZIP
                   </>
                 ) : (
                   <>
