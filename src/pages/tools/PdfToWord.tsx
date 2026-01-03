@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages } from 'lucide-react';
+import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages, AlignLeft } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { Button } from '@/components/ui/button';
@@ -55,11 +55,23 @@ interface ExtractedImage {
   pageNumber: number;
 }
 
+interface TextLine {
+  text: string;
+  fontSize: number;
+  isBold: boolean;
+  isItalic: boolean;
+  alignment: 'left' | 'center' | 'right';
+  y: number;
+  x: number;
+  spacing: number; // Gap to next line
+}
+
 interface ExtractedPage {
   pageNumber: number;
-  textContent: string[];
+  textLines: TextLine[];
   ocrText: string[];
   images: ExtractedImage[];
+  pageWidth: number;
 }
 
 const PdfToWord = () => {
@@ -74,6 +86,7 @@ const PdfToWord = () => {
   const [includeImages, setIncludeImages] = useState(true);
   const [enableOcr, setEnableOcr] = useState(false);
   const [ocrLanguages, setOcrLanguages] = useState<string[]>(['eng']);
+  const [preserveFormatting, setPreserveFormatting] = useState(true);
 
   // Load PDF previews
   useEffect(() => {
@@ -262,7 +275,7 @@ const PdfToWord = () => {
     }
   };
 
-  const extractTextFromPdf = async (file: File, extractImages: boolean, useOcr: boolean, languages: string[]): Promise<ExtractedPage[]> => {
+  const extractTextFromPdf = async (file: File, extractImages: boolean, useOcr: boolean, languages: string[], preserveLayout: boolean): Promise<ExtractedPage[]> => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const pages: ExtractedPage[] = [];
@@ -274,6 +287,8 @@ const PdfToWord = () => {
       setProgressMessage(`Extracting text from page ${i}/${totalPages}...`);
       
       const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      const pageWidth = viewport.width;
       const textContent = await page.getTextContent();
       
       // Extract images if enabled
@@ -282,29 +297,103 @@ const PdfToWord = () => {
         pageImages = await extractImagesFromPage(page, i);
       }
       
-      // Group text items by their y position to form lines
-      const lines: { y: number; text: string }[] = [];
+      // Extract text items with formatting info
+      const textItems: Array<{
+        text: string;
+        x: number;
+        y: number;
+        fontSize: number;
+        fontName: string;
+        width: number;
+      }> = [];
       
       textContent.items.forEach((item: any) => {
         if ('str' in item && item.str.trim()) {
-          const y = Math.round(item.transform[5]);
-          const existingLine = lines.find(l => Math.abs(l.y - y) < 5);
-          if (existingLine) {
-            existingLine.text += ' ' + item.str;
-          } else {
-            lines.push({ y, text: item.str });
-          }
+          const transform = item.transform;
+          const fontSize = Math.abs(transform[0]) || Math.abs(transform[3]) || 12;
+          textItems.push({
+            text: item.str,
+            x: transform[4],
+            y: transform[5],
+            fontSize: fontSize,
+            fontName: item.fontName || '',
+            width: item.width || 0,
+          });
         }
       });
-
-      // Sort by y position (top to bottom)
-      lines.sort((a, b) => b.y - a.y);
+      
+      // Group text items by y position to form lines with formatting
+      const lineGroups: Map<number, typeof textItems> = new Map();
+      const tolerance = 5;
+      
+      textItems.forEach((item) => {
+        const roundedY = Math.round(item.y / tolerance) * tolerance;
+        const existing = lineGroups.get(roundedY);
+        if (existing) {
+          existing.push(item);
+        } else {
+          lineGroups.set(roundedY, [item]);
+        }
+      });
+      
+      // Convert to TextLine array with formatting
+      const textLines: TextLine[] = [];
+      const sortedYs = Array.from(lineGroups.keys()).sort((a, b) => b - a);
+      
+      sortedYs.forEach((y, index) => {
+        const items = lineGroups.get(y)!;
+        // Sort items by x position
+        items.sort((a, b) => a.x - b.x);
+        
+        const combinedText = items.map(item => item.text).join(' ').trim();
+        if (!combinedText) return;
+        
+        // Calculate average font size for the line
+        const avgFontSize = items.reduce((sum, item) => sum + item.fontSize, 0) / items.length;
+        
+        // Detect font style from font name
+        const fontNames = items.map(item => item.fontName.toLowerCase()).join(' ');
+        const isBold = fontNames.includes('bold') || fontNames.includes('black') || fontNames.includes('heavy');
+        const isItalic = fontNames.includes('italic') || fontNames.includes('oblique');
+        
+        // Determine alignment based on x position
+        const avgX = items.reduce((sum, item) => sum + item.x, 0) / items.length;
+        const lineWidth = items.reduce((sum, item) => sum + (item.width || item.text.length * avgFontSize * 0.5), 0);
+        const leftMargin = items[0].x;
+        const rightMargin = pageWidth - (items[items.length - 1].x + (items[items.length - 1].width || 0));
+        
+        let alignment: 'left' | 'center' | 'right' = 'left';
+        if (preserveLayout) {
+          const centerThreshold = pageWidth * 0.15;
+          if (Math.abs(leftMargin - rightMargin) < centerThreshold && leftMargin > pageWidth * 0.2) {
+            alignment = 'center';
+          } else if (leftMargin > rightMargin + pageWidth * 0.2) {
+            alignment = 'right';
+          }
+        }
+        
+        // Calculate spacing to next line
+        const nextY = sortedYs[index + 1];
+        const spacing = nextY ? y - nextY : avgFontSize * 1.5;
+        
+        textLines.push({
+          text: combinedText,
+          fontSize: avgFontSize,
+          isBold,
+          isItalic,
+          alignment,
+          y,
+          x: leftMargin,
+          spacing: Math.max(spacing, 0),
+        });
+      });
       
       pages.push({
         pageNumber: i,
-        textContent: lines.map(l => l.text.trim()).filter(t => t),
+        textLines,
         ocrText: [],
         images: pageImages,
+        pageWidth,
       });
     }
 
@@ -316,7 +405,7 @@ const PdfToWord = () => {
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
         // Check if page has very little text (likely scanned)
-        const hasLittleText = page.textContent.join(' ').length < 50;
+        const hasLittleText = page.textLines.map(l => l.text).join(' ').length < 50;
         
         if (hasLittleText) {
           const pdfPage = await pdf.getPage(page.pageNumber);
@@ -371,8 +460,8 @@ const PdfToWord = () => {
       );
 
       // Add text content (prioritize regular text, fall back to OCR)
-      const textToUse = page.textContent.length > 0 ? page.textContent : page.ocrText;
-      const isOcrText = page.textContent.length === 0 && page.ocrText.length > 0;
+      const hasTextLines = page.textLines.length > 0;
+      const isOcrText = !hasTextLines && page.ocrText.length > 0;
       
       if (isOcrText) {
         children.push(
@@ -388,26 +477,64 @@ const PdfToWord = () => {
             spacing: { after: 100 },
           })
         );
-      }
-      
-      textToUse.forEach((line, lineIndex) => {
-        // Detect if line might be a heading (short, possibly bold in original)
-        const isHeading = line.length < 100 && lineIndex < 3 && line === line.toUpperCase();
         
-        children.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: line,
-                size: isHeading ? 28 : 24,
-                bold: isHeading,
-              }),
-            ],
-            heading: isHeading ? HeadingLevel.HEADING_2 : undefined,
-            spacing: { after: 120 },
-          })
-        );
-      });
+        // Add OCR text as simple paragraphs
+        page.ocrText.forEach((line) => {
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: line,
+                  size: 24,
+                }),
+              ],
+              spacing: { after: 120 },
+            })
+          );
+        });
+      } else {
+        // Calculate base font size (most common font size in document)
+        const fontSizes = page.textLines.map(l => l.fontSize);
+        const baseFontSize = fontSizes.length > 0 
+          ? fontSizes.sort((a, b) => 
+              fontSizes.filter(v => v === a).length - fontSizes.filter(v => v === b).length
+            ).pop() || 12
+          : 12;
+        
+        page.textLines.forEach((line, lineIndex) => {
+          // Determine if this is a heading based on font size and style
+          const fontRatio = line.fontSize / baseFontSize;
+          const isHeading = fontRatio > 1.3 || (line.isBold && fontRatio > 1.1);
+          const isLargeHeading = fontRatio > 1.6;
+          
+          // Convert alignment
+          let docAlignment: (typeof AlignmentType)[keyof typeof AlignmentType] = AlignmentType.LEFT;
+          if (line.alignment === 'center') docAlignment = AlignmentType.CENTER;
+          else if (line.alignment === 'right') docAlignment = AlignmentType.RIGHT;
+          
+          // Calculate Word document font size (half-points)
+          const wordFontSize = Math.round(line.fontSize * 2);
+          
+          // Calculate spacing based on original spacing
+          const spacingAfter = Math.min(Math.round(line.spacing * 8), 400);
+          
+          children.push(
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: line.text,
+                  size: wordFontSize,
+                  bold: line.isBold || isHeading,
+                  italics: line.isItalic,
+                }),
+              ],
+              heading: isLargeHeading ? HeadingLevel.HEADING_1 : isHeading ? HeadingLevel.HEADING_2 : undefined,
+              alignment: docAlignment,
+              spacing: { after: spacingAfter },
+            })
+          );
+        });
+      }
 
       // Add images from this page
       if (page.images.length > 0) {
@@ -480,7 +607,7 @@ const PdfToWord = () => {
 
     try {
       // Extract text from PDF
-      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguages);
+      const pages = await extractTextFromPdf(files[0].file, includeImages, enableOcr, ocrLanguages, preserveFormatting);
       setExtractedPages(pages);
 
       // Count totals
@@ -640,6 +767,22 @@ const PdfToWord = () => {
                     <Switch
                       checked={includeImages}
                       onCheckedChange={setIncludeImages}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <AlignLeft className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium text-sm">Preserve Formatting</p>
+                        <p className="text-xs text-muted-foreground">
+                          Keep font sizes, styles & alignment
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={preserveFormatting}
+                      onCheckedChange={setPreserveFormatting}
                     />
                   </div>
                   
