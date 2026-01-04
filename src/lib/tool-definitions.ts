@@ -180,7 +180,6 @@ export const tools: Tool[] = [
     category: 'convert-to',
     path: '/tools/word-to-pdf',
     accepts: ['.doc', '.docx'],
-    comingSoon: true,
   },
   {
     id: 'excel-to-pdf',
