@@ -1,8 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { FileText, Download, Loader2, X, Plus, Archive } from 'lucide-react';
-import mammoth from 'mammoth';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import * as mammoth from 'mammoth';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -24,7 +23,6 @@ const WordToPdf = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
-  const renderContainerRef = useRef<HTMLDivElement>(null);
 
   const handleFilesChange = (newFiles: any[]) => {
     const wordFiles: WordFile[] = newFiles.map((f) => ({
@@ -61,104 +59,84 @@ const WordToPdf = () => {
     setCurrentFile('');
   };
 
-  const convertWordToPdf = async (file: File): Promise<Blob> => {
+  const convertWordToPdf = async (file: File): Promise<Uint8Array> => {
     const arrayBuffer = await readFileAsArrayBuffer(file);
-    
-    // Convert DOCX to HTML using mammoth
-    const result = await mammoth.convertToHtml({ arrayBuffer });
-    const html = result.value;
 
-    // Create a temporary container to render the HTML
-    const container = document.createElement('div');
-    container.innerHTML = html;
-    container.style.cssText = `
-      position: absolute;
-      left: -9999px;
-      top: 0;
-      width: 794px;
-      padding: 40px;
-      background: white;
-      font-family: 'Times New Roman', serif;
-      font-size: 12pt;
-      line-height: 1.5;
-      color: black;
-    `;
+    // Extract text from DOCX (best-effort). Some complex layouts may not map 1:1.
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    const text = (result.value || '').replace(/\r\n/g, '\n');
 
-    // Style the content
-    const style = document.createElement('style');
-    style.textContent = `
-      p { margin: 0 0 12pt 0; }
-      h1 { font-size: 24pt; font-weight: bold; margin: 24pt 0 12pt 0; }
-      h2 { font-size: 18pt; font-weight: bold; margin: 18pt 0 9pt 0; }
-      h3 { font-size: 14pt; font-weight: bold; margin: 14pt 0 7pt 0; }
-      h4, h5, h6 { font-size: 12pt; font-weight: bold; margin: 12pt 0 6pt 0; }
-      table { border-collapse: collapse; width: 100%; margin: 12pt 0; }
-      td, th { border: 1px solid #000; padding: 6pt; }
-      ul, ol { margin: 0 0 12pt 24pt; padding: 0; }
-      li { margin: 0 0 6pt 0; }
-      img { max-width: 100%; height: auto; }
-      strong, b { font-weight: bold; }
-      em, i { font-style: italic; }
-      u { text-decoration: underline; }
-    `;
-    container.appendChild(style);
-    document.body.appendChild(container);
+    const pdfDoc = await PDFDocument.create();
+    const font = await pdfDoc.embedFont(StandardFonts.TimesRoman);
 
-    try {
-      // Render to canvas
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 794,
-      });
+    const pageWidth = 595.28; // A4 in points
+    const pageHeight = 841.89;
+    const margin = 48;
+    const fontSize = 12;
+    const lineHeight = Math.round(fontSize * 1.35);
 
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'pt',
-        format: 'a4',
-      });
+    const wrapLine = (line: string, maxWidth: number): string[] => {
+      const words = line.split(/\s+/).filter(Boolean);
+      if (words.length === 0) return [''];
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const lines: string[] = [];
+      let current = words[0];
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      for (let i = 1; i < words.length; i++) {
+        const candidate = `${current} ${words[i]}`;
+        const width = font.widthOfTextAtSize(candidate, fontSize);
 
-      // Add first page
-      pdf.addImage(
-        canvas.toDataURL('image/jpeg', 0.95),
-        'JPEG',
-        0,
-        position,
-        imgWidth,
-        imgHeight
-      );
-      heightLeft -= pageHeight;
-
-      // Add additional pages if needed
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(
-          canvas.toDataURL('image/jpeg', 0.95),
-          'JPEG',
-          0,
-          position,
-          imgWidth,
-          imgHeight
-        );
-        heightLeft -= pageHeight;
+        if (width <= maxWidth) {
+          current = candidate;
+        } else {
+          lines.push(current);
+          current = words[i];
+        }
       }
 
-      return pdf.output('blob');
-    } finally {
-      document.body.removeChild(container);
+      lines.push(current);
+      return lines;
+    };
+
+    let page = pdfDoc.addPage([pageWidth, pageHeight]);
+    let y = pageHeight - margin - fontSize;
+    const maxTextWidth = pageWidth - margin * 2;
+
+    const paragraphs = text.split('\n');
+
+    for (let p = 0; p < paragraphs.length; p++) {
+      const para = paragraphs[p].trimEnd();
+
+      // Blank line
+      if (!para.trim()) {
+        y -= lineHeight;
+        if (y < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          y = pageHeight - margin - fontSize;
+        }
+        continue;
+      }
+
+      const wrapped = wrapLine(para, maxTextWidth);
+      for (const line of wrapped) {
+        page.drawText(line, { x: margin, y, size: fontSize, font });
+        y -= lineHeight;
+
+        if (y < margin) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          y = pageHeight - margin - fontSize;
+        }
+      }
+
+      // Paragraph spacing
+      y -= Math.round(lineHeight * 0.35);
+      if (y < margin) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        y = pageHeight - margin - fontSize;
+      }
     }
+
+    return pdfDoc.save();
   };
 
   const handleConvert = async () => {
@@ -176,11 +154,11 @@ const WordToPdf = () => {
         setCurrentFile(files[0].name);
         setProgress(20);
 
-        const pdfBlob = await convertWordToPdf(files[0].file);
+        const pdfBytes = await convertWordToPdf(files[0].file);
         setProgress(90);
 
         const filename = files[0].name.replace(/\.(docx?|doc)$/i, '.pdf');
-        downloadBlob(new Uint8Array(await pdfBlob.arrayBuffer()), filename);
+        downloadBlob(pdfBytes, filename);
 
         setProgress(100);
         toast.success('Word document converted to PDF!');
@@ -193,9 +171,9 @@ const WordToPdf = () => {
           setCurrentFile(files[i].name);
           setProgress((i / files.length) * 80);
 
-          const pdfBlob = await convertWordToPdf(files[i].file);
+          const pdfBytes = await convertWordToPdf(files[i].file);
           const filename = files[i].name.replace(/\.(docx?|doc)$/i, '.pdf');
-          zip.file(filename, pdfBlob);
+          zip.file(filename, pdfBytes);
         }
 
         setProgress(90);
@@ -353,9 +331,6 @@ const WordToPdf = () => {
           </ul>
         </div>
       </div>
-
-      {/* Hidden container for rendering */}
-      <div ref={renderContainerRef} style={{ display: 'none' }} />
     </ToolLayout>
   );
 };
