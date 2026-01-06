@@ -981,3 +981,257 @@ export const renderPdfPages = async (
     return [];
   }
 };
+
+// Crop PDF pages
+export type CropMargins = {
+  top: number;    // percentage 0-100
+  bottom: number; // percentage 0-100
+  left: number;   // percentage 0-100
+  right: number;  // percentage 0-100
+};
+
+export const cropPdf = async (
+  file: File,
+  margins: CropMargins,
+  pageNumbers?: number[] // If undefined, apply to all pages
+): Promise<Uint8Array> => {
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const pdfDoc = await PDFDocument.load(arrayBuffer);
+  const pages = pdfDoc.getPages();
+  
+  pages.forEach((page, index) => {
+    if (pageNumbers && !pageNumbers.includes(index + 1)) return;
+    
+    const { width, height } = page.getSize();
+    const mediaBox = page.getMediaBox();
+    
+    const cropLeft = (margins.left / 100) * width;
+    const cropRight = (margins.right / 100) * width;
+    const cropTop = (margins.top / 100) * height;
+    const cropBottom = (margins.bottom / 100) * height;
+    
+    // Set crop box (visible area)
+    page.setCropBox(
+      mediaBox.x + cropLeft,
+      mediaBox.y + cropBottom,
+      width - cropLeft - cropRight,
+      height - cropTop - cropBottom
+    );
+  });
+  
+  return pdfDoc.save();
+};
+
+// Redact PDF - permanently remove content by drawing black rectangles
+export type RedactionArea = {
+  id: string;
+  pageIndex: number;
+  x: number; // percentage
+  y: number; // percentage
+  width: number; // percentage
+  height: number; // percentage
+};
+
+export const redactPdf = async (
+  file: File,
+  redactions: RedactionArea[]
+): Promise<Uint8Array> => {
+  // To truly redact, we re-render through pdfjs and apply redactions
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const newPdfDoc = await PDFDocument.create();
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const scale = 2;
+    const viewport = page.getViewport({ scale });
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) continue;
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    // Render the page
+    await page.render({ canvasContext: context, viewport, canvas }).promise;
+    
+    // Apply redactions for this page
+    const pageRedactions = redactions.filter(r => r.pageIndex === i - 1);
+    context.fillStyle = 'black';
+    
+    for (const redaction of pageRedactions) {
+      const x = (redaction.x / 100) * canvas.width;
+      const y = (redaction.y / 100) * canvas.height;
+      const w = (redaction.width / 100) * canvas.width;
+      const h = (redaction.height / 100) * canvas.height;
+      context.fillRect(x, y, w, h);
+    }
+    
+    // Convert to image and add to new PDF
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
+    const jpgImage = await newPdfDoc.embedJpg(imageBytes);
+    
+    const originalViewport = page.getViewport({ scale: 1 });
+    const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
+    
+    newPage.drawImage(jpgImage, {
+      x: 0,
+      y: 0,
+      width: originalViewport.width,
+      height: originalViewport.height,
+    });
+  }
+  
+  return newPdfDoc.save();
+};
+
+// Compare two PDFs - creates side-by-side comparison
+export const comparePdfs = async (
+  file1: File,
+  file2: File,
+  onProgress?: (progress: number) => void
+): Promise<Uint8Array> => {
+  const [arrayBuffer1, arrayBuffer2] = await Promise.all([
+    readFileAsArrayBuffer(file1),
+    readFileAsArrayBuffer(file2),
+  ]);
+  
+  const [pdf1, pdf2] = await Promise.all([
+    pdfjsLib.getDocument({ data: arrayBuffer1 }).promise,
+    pdfjsLib.getDocument({ data: arrayBuffer2 }).promise,
+  ]);
+  
+  const maxPages = Math.max(pdf1.numPages, pdf2.numPages);
+  const newPdfDoc = await PDFDocument.create();
+  const font = await newPdfDoc.embedFont(StandardFonts.Helvetica);
+  
+  for (let i = 1; i <= maxPages; i++) {
+    onProgress?.((i / maxPages) * 100);
+    
+    const scale = 1.5;
+    
+    // Render page from first PDF
+    let img1: Awaited<ReturnType<typeof newPdfDoc.embedJpg>> | null = null;
+    let dim1 = { width: 300, height: 400 };
+    if (i <= pdf1.numPages) {
+      const page1 = await pdf1.getPage(i);
+      const viewport1 = page1.getViewport({ scale });
+      const canvas1 = document.createElement('canvas');
+      const ctx1 = canvas1.getContext('2d');
+      if (ctx1) {
+        canvas1.width = viewport1.width;
+        canvas1.height = viewport1.height;
+        await page1.render({ canvasContext: ctx1, viewport: viewport1, canvas: canvas1 }).promise;
+        const data1 = canvas1.toDataURL('image/jpeg', 0.85);
+        const bytes1 = Uint8Array.from(atob(data1.split(',')[1]), c => c.charCodeAt(0));
+        img1 = await newPdfDoc.embedJpg(bytes1);
+        const origVp = page1.getViewport({ scale: 1 });
+        dim1 = { width: origVp.width, height: origVp.height };
+      }
+    }
+    
+    // Render page from second PDF
+    let img2: Awaited<ReturnType<typeof newPdfDoc.embedJpg>> | null = null;
+    let dim2 = { width: 300, height: 400 };
+    if (i <= pdf2.numPages) {
+      const page2 = await pdf2.getPage(i);
+      const viewport2 = page2.getViewport({ scale });
+      const canvas2 = document.createElement('canvas');
+      const ctx2 = canvas2.getContext('2d');
+      if (ctx2) {
+        canvas2.width = viewport2.width;
+        canvas2.height = viewport2.height;
+        await page2.render({ canvasContext: ctx2, viewport: viewport2, canvas: canvas2 }).promise;
+        const data2 = canvas2.toDataURL('image/jpeg', 0.85);
+        const bytes2 = Uint8Array.from(atob(data2.split(',')[1]), c => c.charCodeAt(0));
+        img2 = await newPdfDoc.embedJpg(bytes2);
+        const origVp = page2.getViewport({ scale: 1 });
+        dim2 = { width: origVp.width, height: origVp.height };
+      }
+    }
+    
+    // Create a page wide enough for both, plus gap
+    const gap = 30;
+    const headerHeight = 30;
+    const pageWidth = dim1.width + dim2.width + gap * 3;
+    const pageHeight = Math.max(dim1.height, dim2.height) + headerHeight + gap * 2;
+    
+    const newPage = newPdfDoc.addPage([pageWidth, pageHeight]);
+    
+    // Draw labels
+    newPage.drawText('Original', {
+      x: gap + dim1.width / 2 - 25,
+      y: pageHeight - 20,
+      size: 12,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    newPage.drawText('Modified', {
+      x: gap * 2 + dim1.width + dim2.width / 2 - 25,
+      y: pageHeight - 20,
+      size: 12,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    
+    // Draw images
+    if (img1) {
+      newPage.drawImage(img1, {
+        x: gap,
+        y: gap,
+        width: dim1.width,
+        height: dim1.height,
+      });
+    } else {
+      newPage.drawText('No page', {
+        x: gap + dim1.width / 2 - 25,
+        y: gap + dim1.height / 2,
+        size: 14,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
+    
+    if (img2) {
+      newPage.drawImage(img2, {
+        x: gap * 2 + dim1.width,
+        y: gap,
+        width: dim2.width,
+        height: dim2.height,
+      });
+    } else {
+      newPage.drawText('No page', {
+        x: gap * 2 + dim1.width + dim2.width / 2 - 25,
+        y: gap + dim2.height / 2,
+        size: 14,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      });
+    }
+    
+    // Draw separator line
+    newPage.drawLine({
+      start: { x: gap + dim1.width + gap / 2, y: gap },
+      end: { x: gap + dim1.width + gap / 2, y: pageHeight - headerHeight - gap },
+      thickness: 1,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+  }
+  
+  return newPdfDoc.save();
+};
+
+// Copy PDF - create exact copies
+export const copyPdf = async (file: File, count: number = 1): Promise<Uint8Array[]> => {
+  const arrayBuffer = await readFileAsArrayBuffer(file);
+  const results: Uint8Array[] = [];
+  
+  for (let i = 0; i < count; i++) {
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    results.push(await pdfDoc.save());
+  }
+  
+  return results;
+};

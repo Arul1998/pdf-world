@@ -128,7 +128,6 @@ export const tools: Tool[] = [
     category: 'organize',
     path: '/tools/copy-pdf',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
 
   // Optimize
@@ -328,7 +327,6 @@ export const tools: Tool[] = [
     category: 'edit',
     path: '/tools/crop',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'edit-pdf',
@@ -387,7 +385,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/redact',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'compare',
@@ -397,7 +394,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/compare',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'workflow',
