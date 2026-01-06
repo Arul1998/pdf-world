@@ -22,6 +22,10 @@ import ProtectPdf from "./pages/tools/ProtectPdf";
 import SignPdf from "./pages/tools/SignPdf";
 import PdfToWord from "./pages/tools/PdfToWord";
 import WordToPdf from "./pages/tools/WordToPdf";
+import CropPdf from "./pages/tools/CropPdf";
+import RedactPdf from "./pages/tools/RedactPdf";
+import ComparePdf from "./pages/tools/ComparePdf";
+import CopyPdf from "./pages/tools/CopyPdf";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -54,6 +58,10 @@ const App = () => (
           <Route path="/tools/sign" element={<SignPdf />} />
           <Route path="/tools/pdf-to-word" element={<PdfToWord />} />
           <Route path="/tools/word-to-pdf" element={<WordToPdf />} />
+          <Route path="/tools/crop" element={<CropPdf />} />
+          <Route path="/tools/redact" element={<RedactPdf />} />
+          <Route path="/tools/compare" element={<ComparePdf />} />
+          <Route path="/tools/copy-pdf" element={<CopyPdf />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
