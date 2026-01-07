@@ -339,7 +339,6 @@ export const tools: Tool[] = [
     category: 'edit',
     path: '/tools/pdf-filler',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
 
   // Security
