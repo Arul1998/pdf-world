@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Lock, Download, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Lock, Download, Loader2, Eye, EyeOff, X, FileText } from 'lucide-react';
+import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { protectPdf, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
+import { protectPdf, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
 import { cn } from '@/lib/utils';
 
 const getPasswordStrength = (password: string): { level: 'weak' | 'medium' | 'strong'; score: number; feedback: string } => {
@@ -51,12 +52,17 @@ const ProtectPdf = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
 
   const passwordStrength = useMemo(() => getPasswordStrength(password), [password]);
 
+  const removeFile = (id: string) => {
+    setFiles(files.filter(f => f.id !== id));
+  };
+
   const handleProtect = async () => {
     if (files.length === 0) {
-      toast.error('Please add a PDF file');
+      toast.error('Please add PDF files');
       return;
     }
 
@@ -76,19 +82,49 @@ const ProtectPdf = () => {
     }
 
     setIsProcessing(true);
-    setProgress(30);
+    setProgress(0);
 
     try {
-      const result = await protectPdf(files[0].file, password, (current, total) => {
-        setProgress(30 + (current / total) * 50);
-      });
-      setProgress(90);
+      if (files.length === 1) {
+        const result = await protectPdf(files[0].file, password, (current, total) => {
+          setProgress(30 + (current / total) * 50);
+        });
+        setProgress(90);
+        
+        const filename = files[0].name.replace('.pdf', '_protected.pdf');
+        downloadBlob(result, filename);
+        setProgress(100);
+        
+        toast.success('PDF protected successfully!');
+      } else {
+        // Multiple files - create ZIP
+        const zip = new JSZip();
+        const date = new Date().toISOString().split('T')[0];
+
+        for (let i = 0; i < files.length; i++) {
+          setCurrentFileIndex(i);
+          setProgress((i / files.length) * 90);
+          
+          const result = await protectPdf(files[i].file, password);
+          const filename = files[i].name.replace('.pdf', '_protected.pdf');
+          zip.file(filename, result);
+        }
+
+        setProgress(95);
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `protected_pdfs_${date}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        setProgress(100);
+        toast.success(`${files.length} PDFs protected successfully!`);
+      }
       
-      const filename = files[0].name.replace('.pdf', '_protected.pdf');
-      downloadBlob(result, filename);
-      setProgress(100);
-      
-      toast.success('PDF protected successfully!');
       setPassword('');
       setConfirmPassword('');
     } catch (error) {
@@ -115,14 +151,47 @@ const ProtectPdf = () => {
         <FileDropZone
           accept={['.pdf']}
           files={files}
-          onFilesChange={(newFiles) => setFiles(newFiles.slice(0, 1))}
-          multiple={false}
-          buttonText="Select PDF"
-          buttonTextWithFiles="Change PDF"
+          onFilesChange={setFiles}
+          multiple={true}
+          hideFileList
+          buttonText="Select Files"
+          buttonTextWithFiles="Add More Files"
         />
 
         {files.length > 0 && (
           <div className="space-y-6">
+            {/* File thumbnails grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {files.map((file) => (
+                <div
+                  key={file.id}
+                  className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
+                >
+                  <button
+                    onClick={() => removeFile(file.id)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
+                    {file.thumbnail ? (
+                      <img src={file.thumbnail} alt={file.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <FileText className="w-10 h-10 text-muted-foreground" />
+                    )}
+                  </div>
+
+                  <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'} • {formatFileSize(file.size)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
             {/* Password Input */}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -205,11 +274,6 @@ const ProtectPdf = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm your password"
                   className="pr-10"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isProcessing && canProtect) {
-                      handleProtect();
-                    }
-                  }}
                 />
                 <Button
                   type="button"
@@ -234,34 +298,45 @@ const ProtectPdf = () => {
             </div>
 
             <p className="text-sm text-muted-foreground">
-              The password will be required to open this PDF. Make sure to remember it!
+              The same password will be applied to all selected PDFs.
             </p>
-
-            {/* Progress Bar */}
-            {isProcessing && (
-              <ProgressBar progress={progress} />
-            )}
-
-            {/* Protect Button */}
-            <Button
-              onClick={handleProtect}
-              disabled={isProcessing || !canProtect}
-              className="w-full h-14 text-lg rounded-2xl"
-              size="lg"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Protecting...
-                </>
-              ) : (
-                <>
-                  <Lock className="mr-2 h-5 w-5" />
-                  Protect PDF
-                </>
-              )}
-            </Button>
           </div>
+        )}
+
+        {isProcessing && (
+          <div className="space-y-2">
+            {files.length > 1 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Protecting file {currentFileIndex + 1} of {files.length}
+              </p>
+            )}
+            <ProgressBar progress={progress} />
+          </div>
+        )}
+
+        <Button
+          onClick={handleProtect}
+          disabled={isProcessing || !canProtect || files.length === 0}
+          className="w-full h-14 text-lg rounded-2xl"
+          size="lg"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Protecting...
+            </>
+          ) : (
+            <>
+              <Lock className="mr-2 h-5 w-5" />
+              Protect PDF{files.length > 1 ? 's' : ''} {files.length > 1 ? '& Download ZIP' : ''}
+            </>
+          )}
+        </Button>
+
+        {files.length > 1 && !isProcessing && (
+          <p className="text-sm text-muted-foreground text-center">
+            Multiple files will be downloaded as a ZIP archive.
+          </p>
         )}
       </div>
     </ToolLayout>
