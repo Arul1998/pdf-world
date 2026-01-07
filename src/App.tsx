@@ -29,6 +29,9 @@ import CopyPdf from "./pages/tools/CopyPdf";
 import ScanToPdf from "./pages/tools/ScanToPdf";
 import RepairPdf from "./pages/tools/RepairPdf";
 import OcrPdf from "./pages/tools/OcrPdf";
+import ExcelToPdf from "./pages/tools/ExcelToPdf";
+import PptToPdf from "./pages/tools/PptToPdf";
+import PdfToExcel from "./pages/tools/PdfToExcel";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -68,6 +71,9 @@ const App = () => (
           <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
           <Route path="/tools/repair" element={<RepairPdf />} />
           <Route path="/tools/ocr" element={<OcrPdf />} />
+          <Route path="/tools/excel-to-pdf" element={<ExcelToPdf />} />
+          <Route path="/tools/ppt-to-pdf" element={<PptToPdf />} />
+          <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
