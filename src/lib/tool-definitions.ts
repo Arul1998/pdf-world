@@ -185,7 +185,6 @@ export const tools: Tool[] = [
     category: 'convert-to',
     path: '/tools/excel-to-pdf',
     accepts: ['.xls', '.xlsx'],
-    comingSoon: true,
   },
   {
     id: 'ppt-to-pdf',
@@ -195,7 +194,6 @@ export const tools: Tool[] = [
     category: 'convert-to',
     path: '/tools/ppt-to-pdf',
     accepts: ['.ppt', '.pptx'],
-    comingSoon: true,
   },
   {
     id: 'html-to-pdf',
@@ -255,7 +253,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-excel',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-to-excel-ocr',
