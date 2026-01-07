@@ -32,6 +32,7 @@ import OcrPdf from "./pages/tools/OcrPdf";
 import ExcelToPdf from "./pages/tools/ExcelToPdf";
 import PptToPdf from "./pages/tools/PptToPdf";
 import PdfToExcel from "./pages/tools/PdfToExcel";
+import EditPdf from "./pages/tools/EditPdf";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -74,6 +75,7 @@ const App = () => (
           <Route path="/tools/excel-to-pdf" element={<ExcelToPdf />} />
           <Route path="/tools/ppt-to-pdf" element={<PptToPdf />} />
           <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
+          <Route path="/tools/edit-pdf" element={<EditPdf />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
