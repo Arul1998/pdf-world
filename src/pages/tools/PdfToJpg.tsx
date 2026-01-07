@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { FileImage, Download, Loader2 } from 'lucide-react';
+import { FileImage, Download, Loader2, X, FileText } from 'lucide-react';
+import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -7,57 +8,79 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { pdfToImages, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
+import { pdfToImages, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
 
 const PdfToJpg = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [format, setFormat] = useState<'jpeg' | 'png'>('jpeg');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [images, setImages] = useState<string[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState(0);
+
+  const removeFile = (id: string) => {
+    setFiles(files.filter(f => f.id !== id));
+  };
 
   const handleConvert = async () => {
     if (files.length === 0) {
-      toast.error('Please add a PDF file');
+      toast.error('Please add PDF files');
       return;
     }
 
     setIsProcessing(true);
     setProgress(0);
-    setImages([]);
 
     try {
-      setProgress(20);
-      const convertedImages = await pdfToImages(files[0].file, format);
-      setProgress(80);
-      setImages(convertedImages);
-      
-      toast.success(`Converted ${convertedImages.length} page(s) to ${format.toUpperCase()}`);
+      const zip = new JSZip();
+      const date = new Date().toISOString().split('T')[0];
+      let totalImages = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        setCurrentFileIndex(i);
+        setProgress((i / files.length) * 90);
+
+        const convertedImages = await pdfToImages(files[i].file, format);
+        totalImages += convertedImages.length;
+
+        // Add images to zip
+        const baseName = files[i].name.replace('.pdf', '');
+        convertedImages.forEach((dataUrl, pageIndex) => {
+          const base64Data = dataUrl.split(',')[1];
+          const filename = files.length === 1 
+            ? `page_${pageIndex + 1}.${format}`
+            : `${baseName}/page_${pageIndex + 1}.${format}`;
+          zip.file(filename, base64Data, { base64: true });
+        });
+      }
+
+      setProgress(95);
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = files.length === 1 
+        ? `${files[0].name.replace('.pdf', '')}_images.zip`
+        : `pdf_to_${format}_${date}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
       setProgress(100);
+      toast.success(`Converted ${totalImages} page(s) to ${format.toUpperCase()}!`);
     } catch (error) {
       console.error(error);
       toast.error('Failed to convert PDF. Please try again.');
     } finally {
       setIsProcessing(false);
+      setProgress(0);
     }
-  };
-
-  const downloadImage = (dataUrl: string, index: number) => {
-    const filename = `page_${index + 1}.${format}`;
-    downloadBlob(dataUrl, filename, `image/${format}`);
-  };
-
-  const downloadAll = () => {
-    images.forEach((img, i) => {
-      setTimeout(() => downloadImage(img, i), i * 300);
-    });
-    toast.success('Downloading all images...');
   };
 
   return (
     <ToolLayout
       title="PDF to JPG"
-      description="Convert each page of a PDF to a high-quality image."
+      description="Convert PDF pages to high-quality images."
       icon={FileImage}
       category="convert from pdf"
       categoryColor="convert-from"
@@ -66,103 +89,107 @@ const PdfToJpg = () => {
         <FileDropZone
           accept={['.pdf']}
           files={files}
-          onFilesChange={(newFiles) => {
-            setFiles(newFiles.slice(0, 1));
-            setImages([]);
-          }}
-          multiple={false}
+          onFilesChange={setFiles}
+          multiple={true}
           hideFileList
-          buttonText="Select File"
-          buttonTextWithFiles="Change File"
+          buttonText="Select Files"
+          buttonTextWithFiles="Add More Files"
         />
 
-        {files.length > 0 && images.length === 0 && (
-          <div className="p-4 bg-muted/50 rounded-xl space-y-4">
-            <Label>Output format</Label>
-            <RadioGroup value={format} onValueChange={(v) => setFormat(v as typeof format)}>
-              <div className="grid grid-cols-2 gap-4">
-                {[
-                  { value: 'jpeg', label: 'JPEG', desc: 'Smaller file size' },
-                  { value: 'png', label: 'PNG', desc: 'Lossless quality' },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
-                      format === option.value
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <RadioGroupItem value={option.value} className="sr-only" />
-                    <span className="font-semibold">{option.label}</span>
-                    <span className="text-xs text-muted-foreground">{option.desc}</span>
-                  </label>
-                ))}
-              </div>
-            </RadioGroup>
-          </div>
-        )}
-
-        {isProcessing && (
-          <ProgressBar progress={progress} />
-        )}
-
-        {images.length === 0 ? (
-          <Button
-            onClick={handleConvert}
-            disabled={files.length === 0 || isProcessing}
-            size="lg"
-            className="w-full"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Converting...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-5 w-5" />
-                Convert to Images
-              </>
-            )}
-          </Button>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm font-medium text-center">{images.length} images ready</p>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {images.map((img, index) => (
+        {files.length > 0 && (
+          <>
+            {/* File thumbnails grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {files.map((file) => (
                 <div
-                  key={index}
-                  className="group relative aspect-[3/4] bg-muted rounded-lg overflow-hidden border border-border"
+                  key={file.id}
+                  className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
                 >
-                  <img
-                    src={img}
-                    alt={`Page ${index + 1}`}
-                    className="w-full h-full object-contain"
-                  />
-                  <div className="absolute inset-0 bg-foreground/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => downloadImage(img, index)}
-                    >
-                      Download
-                    </Button>
+                  <button
+                    onClick={() => removeFile(file.id)}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+
+                  <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
+                    {file.thumbnail ? (
+                      <img src={file.thumbnail} alt={file.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <FileText className="w-10 h-10 text-muted-foreground" />
+                    )}
                   </div>
-                  <span className="absolute bottom-2 right-2 text-xs bg-background/80 px-2 py-1 rounded">
-                    Page {index + 1}
-                  </span>
+
+                  <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'} • {formatFileSize(file.size)}
+                  </p>
                 </div>
               ))}
             </div>
-            
-            <Button onClick={downloadAll} size="lg" className="w-full">
-              <Download className="mr-2 h-5 w-5" />
-              Download All
-            </Button>
+
+            <div className="p-4 bg-muted/50 rounded-xl space-y-4">
+              <Label>Output format</Label>
+              <RadioGroup value={format} onValueChange={(v) => setFormat(v as typeof format)}>
+                <div className="grid grid-cols-2 gap-4">
+                  {[
+                    { value: 'jpeg', label: 'JPEG', desc: 'Smaller file size' },
+                    { value: 'png', label: 'PNG', desc: 'Lossless quality' },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex flex-col items-center gap-1 p-4 rounded-xl border-2 cursor-pointer transition-colors ${
+                        format === option.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <RadioGroupItem value={option.value} className="sr-only" />
+                      <span className="font-semibold">{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.desc}</span>
+                    </label>
+                  ))}
+                </div>
+              </RadioGroup>
+            </div>
+          </>
+        )}
+
+        {isProcessing && (
+          <div className="space-y-2">
+            {files.length > 1 && (
+              <p className="text-sm text-muted-foreground text-center">
+                Converting file {currentFileIndex + 1} of {files.length}
+              </p>
+            )}
+            <ProgressBar progress={progress} />
           </div>
         )}
+
+        <Button
+          onClick={handleConvert}
+          disabled={files.length === 0 || isProcessing}
+          size="lg"
+          className="w-full"
+        >
+          {isProcessing ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Converting...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-5 w-5" />
+              Convert & Download ZIP
+            </>
+          )}
+        </Button>
+
+        <p className="text-sm text-muted-foreground text-center">
+          Images will be downloaded as a ZIP archive.
+        </p>
       </div>
     </ToolLayout>
   );
