@@ -330,7 +330,6 @@ export const tools: Tool[] = [
     category: 'edit',
     path: '/tools/edit-pdf',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-filler',
