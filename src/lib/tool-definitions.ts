@@ -203,7 +203,6 @@ export const tools: Tool[] = [
     category: 'convert-to',
     path: '/tools/html-to-pdf',
     accepts: ['.html', '.htm'],
-    comingSoon: true,
   },
   {
     id: 'office-to-pdf',
@@ -213,7 +212,6 @@ export const tools: Tool[] = [
     category: 'convert-to',
     path: '/tools/office-to-pdf',
     accepts: ['.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx'],
-    comingSoon: true,
   },
 
   // Convert from PDF
@@ -243,7 +241,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-word-ocr',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-to-excel',
@@ -262,7 +259,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-excel-ocr',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-to-ppt',
@@ -272,7 +268,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-ppt',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'pdf-to-pdfa',
@@ -282,7 +277,6 @@ export const tools: Tool[] = [
     category: 'convert-from',
     path: '/tools/pdf-to-pdfa',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
 
   // Edit
@@ -395,7 +389,6 @@ export const tools: Tool[] = [
     category: 'security',
     path: '/tools/workflow',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
 ];
 

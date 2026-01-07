@@ -34,6 +34,13 @@ import PptToPdf from "./pages/tools/PptToPdf";
 import PdfToExcel from "./pages/tools/PdfToExcel";
 import EditPdf from "./pages/tools/EditPdf";
 import PdfFiller from "./pages/tools/PdfFiller";
+import HtmlToPdf from "./pages/tools/HtmlToPdf";
+import OfficeToPdf from "./pages/tools/OfficeToPdf";
+import PdfToWordOcr from "./pages/tools/PdfToWordOcr";
+import PdfToExcelOcr from "./pages/tools/PdfToExcelOcr";
+import PdfToPpt from "./pages/tools/PdfToPpt";
+import PdfToPdfa from "./pages/tools/PdfToPdfa";
+import Workflow from "./pages/tools/Workflow";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -78,6 +85,13 @@ const App = () => (
           <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
           <Route path="/tools/edit-pdf" element={<EditPdf />} />
           <Route path="/tools/pdf-filler" element={<PdfFiller />} />
+          <Route path="/tools/html-to-pdf" element={<HtmlToPdf />} />
+          <Route path="/tools/office-to-pdf" element={<OfficeToPdf />} />
+          <Route path="/tools/pdf-to-word-ocr" element={<PdfToWordOcr />} />
+          <Route path="/tools/pdf-to-excel-ocr" element={<PdfToExcelOcr />} />
+          <Route path="/tools/pdf-to-ppt" element={<PdfToPpt />} />
+          <Route path="/tools/pdf-to-pdfa" element={<PdfToPdfa />} />
+          <Route path="/tools/workflow" element={<Workflow />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
