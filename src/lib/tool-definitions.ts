@@ -118,7 +118,6 @@ export const tools: Tool[] = [
     category: 'organize',
     path: '/tools/scan-to-pdf',
     accepts: ['camera'],
-    comingSoon: true,
   },
   {
     id: 'copy-pdf',
@@ -148,7 +147,6 @@ export const tools: Tool[] = [
     category: 'optimize',
     path: '/tools/repair',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
   {
     id: 'ocr',
@@ -158,7 +156,6 @@ export const tools: Tool[] = [
     category: 'optimize',
     path: '/tools/ocr',
     accepts: ['.pdf'],
-    comingSoon: true,
   },
 
   // Convert to PDF
