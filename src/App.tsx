@@ -26,6 +26,9 @@ import CropPdf from "./pages/tools/CropPdf";
 import RedactPdf from "./pages/tools/RedactPdf";
 import ComparePdf from "./pages/tools/ComparePdf";
 import CopyPdf from "./pages/tools/CopyPdf";
+import ScanToPdf from "./pages/tools/ScanToPdf";
+import RepairPdf from "./pages/tools/RepairPdf";
+import OcrPdf from "./pages/tools/OcrPdf";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -62,6 +65,9 @@ const App = () => (
           <Route path="/tools/redact" element={<RedactPdf />} />
           <Route path="/tools/compare" element={<ComparePdf />} />
           <Route path="/tools/copy-pdf" element={<CopyPdf />} />
+          <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
+          <Route path="/tools/repair" element={<RepairPdf />} />
+          <Route path="/tools/ocr" element={<OcrPdf />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
