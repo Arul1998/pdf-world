@@ -13,7 +13,10 @@ import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as F
 import * as pdfjsLib from 'pdfjs-dist';
 import { PDFDocument, rgb } from 'pdf-lib';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 type Tool = 'select' | 'draw' | 'text' | 'rectangle' | 'circle' | 'image';
 
