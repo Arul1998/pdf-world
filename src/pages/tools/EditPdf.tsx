@@ -116,6 +116,23 @@ const EditPdf = () => {
       width: pageData.width,
       height: pageData.height,
       backgroundColor: '#ffffff',
+      // Professional selection styling
+      selectionColor: 'rgba(59, 130, 246, 0.15)',
+      selectionBorderColor: '#3b82f6',
+      selectionLineWidth: 1.5,
+    });
+
+    // Configure professional control styling for all objects
+    FabricObject.prototype.set({
+      transparentCorners: false,
+      cornerColor: '#3b82f6',
+      cornerStrokeColor: '#ffffff',
+      cornerSize: 10,
+      cornerStyle: 'circle',
+      borderColor: '#3b82f6',
+      borderScaleFactor: 1.5,
+      padding: 8,
+      borderDashArray: undefined,
     });
 
     // Render PDF page as background
