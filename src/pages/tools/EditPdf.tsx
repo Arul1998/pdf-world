@@ -10,13 +10,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { toast } from 'sonner';
 import { downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as FabricImage, FabricObject, PencilBrush } from 'fabric';
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 import { PDFDocument, rgb } from 'pdf-lib';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 type Tool = 'select' | 'draw' | 'text' | 'rectangle' | 'circle' | 'image';
 
@@ -83,7 +79,8 @@ const EditPdf = () => {
       setProgress(100);
     } catch (error) {
       console.error('Error loading PDF:', error);
-      toast.error('Failed to load PDF');
+      const message = error instanceof Error ? error.message : 'Failed to load PDF';
+      toast.error(message);
     } finally {
       setIsProcessing(false);
     }
