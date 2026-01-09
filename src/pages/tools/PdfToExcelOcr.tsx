@@ -14,7 +14,10 @@ import * as XLSX from 'xlsx';
 import Tesseract from 'tesseract.js';
 import { PDFFile } from '@/lib/pdf-tools';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 const OCR_LANGUAGES = [
   { code: 'eng', name: 'English' },
