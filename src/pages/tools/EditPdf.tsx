@@ -421,9 +421,11 @@ const EditPdf = () => {
         {files.length === 0 ? (
           <FileDropZone
             accept={['.pdf']}
+            multiple={false}
             maxFiles={1}
             files={files}
             onFilesChange={setFiles}
+            hideFileList
           />
         ) : pdfPages.length === 0 ? (
           <div className="text-center py-12">
