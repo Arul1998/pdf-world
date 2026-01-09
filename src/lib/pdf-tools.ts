@@ -1,11 +1,7 @@
 import { PDFDocument, degrees, rgb, StandardFonts } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 
-// Set up PDF.js worker for v5.x
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// PDF.js worker setup is handled by the bundled build (webpack.mjs) for modern bundlers
 
 export interface PDFFile {
   id: string;
