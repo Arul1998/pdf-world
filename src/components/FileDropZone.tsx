@@ -15,6 +15,8 @@ interface FileDropZoneProps {
   hideFileList?: boolean;
   buttonText?: string;
   buttonTextWithFiles?: string;
+  /** When false, skips PDF page count + thumbnail generation (faster for large PDFs). */
+  processPdfMetadata?: boolean;
 }
 
 export const FileDropZone = ({
@@ -28,6 +30,7 @@ export const FileDropZone = ({
   hideFileList = false,
   buttonText = 'Select Files',
   buttonTextWithFiles = 'Add More Files',
+  processPdfMetadata = true,
 }: FileDropZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -79,7 +82,7 @@ export const FileDropZone = ({
       };
 
       // Get page count and thumbnail for PDFs
-      if (extension === '.pdf') {
+      if (extension === '.pdf' && processPdfMetadata) {
         try {
           pdfFile.pageCount = await getPdfPageCount(file);
           pdfFile.thumbnail = await generatePdfThumbnail(file);
