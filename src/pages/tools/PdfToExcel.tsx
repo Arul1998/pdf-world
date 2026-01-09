@@ -11,7 +11,10 @@ import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 import { toast } from 'sonner';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 import { formatFileSize, type PDFFile } from '@/lib/pdf-tools';
 
