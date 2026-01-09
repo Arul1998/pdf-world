@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -36,6 +36,7 @@ const EditPdf = () => {
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [zoomLevel, setZoomLevel] = useState(1);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -530,6 +531,31 @@ const EditPdf = () => {
                 </div>
               )}
 
+              {/* Zoom controls */}
+              <div className="flex items-center gap-1 border-l pl-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setZoomLevel(z => Math.max(0.25, z - 0.25))}
+                  disabled={zoomLevel <= 0.25}
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-xs w-12 text-center font-medium">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setZoomLevel(z => Math.min(3, z + 0.25))}
+                  disabled={zoomLevel >= 3}
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+
               <div className="flex items-center gap-1 border-l pl-2 ml-auto">
                 <Button variant="ghost" size="sm" onClick={undo} disabled={historyIndex <= 0}>
                   <Undo className="h-4 w-4" />
@@ -548,7 +574,9 @@ const EditPdf = () => {
               ref={containerRef}
               className="relative bg-muted/30 rounded-lg border overflow-auto max-h-[600px] flex justify-center p-4"
             >
-              <canvas ref={canvasRef} className="shadow-lg" />
+              <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center', transition: 'transform 0.2s ease' }}>
+                <canvas ref={canvasRef} className="shadow-lg" />
+              </div>
             </div>
 
             {/* Page navigation */}
