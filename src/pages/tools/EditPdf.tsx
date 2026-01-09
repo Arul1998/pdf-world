@@ -44,6 +44,8 @@ const EditPdf = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const fabricCanvasRef = useRef<FabricCanvas | null>(null);
+  const isInitializingRef = useRef(false);
 
   // Load PDF metadata only (fast)
   const loadPdfMetadata = useCallback(async () => {
@@ -132,25 +134,35 @@ const EditPdf = () => {
   useEffect(() => {
     if (!canvasRef.current || !currentPageData) return;
     
+    // Prevent double initialization in React strict mode
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
+    
     const pageData = currentPageData;
 
-    // Dispose existing canvas
-    if (fabricCanvas) {
-      // Save current state before switching
-      const json = JSON.stringify(fabricCanvas.toJSON());
-      setPageCanvasStates(prev => new Map(prev).set(currentPage, json));
-      fabricCanvas.dispose();
+    // Dispose existing canvas using ref
+    if (fabricCanvasRef.current) {
+      try {
+        const json = JSON.stringify(fabricCanvasRef.current.toJSON());
+        setPageCanvasStates(prev => new Map(prev).set(currentPage, json));
+        fabricCanvasRef.current.dispose();
+      } catch (e) {
+        console.warn('Canvas dispose warning:', e);
+      }
+      fabricCanvasRef.current = null;
+      setFabricCanvas(null);
     }
 
     const canvas = new FabricCanvas(canvasRef.current, {
       width: pageData.width,
       height: pageData.height,
       backgroundColor: '#ffffff',
-      // Professional selection styling
       selectionColor: 'rgba(59, 130, 246, 0.15)',
       selectionBorderColor: '#3b82f6',
       selectionLineWidth: 1.5,
     });
+
+    fabricCanvasRef.current = canvas;
 
     // Configure professional control styling for all objects
     FabricObject.prototype.set({
@@ -173,6 +185,7 @@ const EditPdf = () => {
     tempCtx.putImageData(pageData, 0, 0);
     
     FabricImage.fromURL(tempCanvas.toDataURL()).then((img) => {
+      if (!fabricCanvasRef.current) return;
       img.set({
         left: 0,
         top: 0,
@@ -197,15 +210,25 @@ const EditPdf = () => {
     canvas.freeDrawingBrush.width = brushSize;
 
     setFabricCanvas(canvas);
+    isInitializingRef.current = false;
     
     // Initialize history
     setHistory([JSON.stringify(canvas.toJSON())]);
     setHistoryIndex(0);
 
     return () => {
-      // Save state when unmounting
-      const json = JSON.stringify(canvas.toJSON());
-      setPageCanvasStates(prev => new Map(prev).set(currentPage, json));
+      // Save state and dispose on cleanup
+      if (fabricCanvasRef.current) {
+        try {
+          const json = JSON.stringify(fabricCanvasRef.current.toJSON());
+          setPageCanvasStates(prev => new Map(prev).set(currentPage, json));
+          fabricCanvasRef.current.dispose();
+        } catch (e) {
+          console.warn('Canvas cleanup warning:', e);
+        }
+        fabricCanvasRef.current = null;
+      }
+      isInitializingRef.current = false;
     };
   }, [currentPageData, currentPage]);
 
