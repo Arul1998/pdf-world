@@ -25,15 +25,17 @@ const EditPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [pdfPages, setPdfPages] = useState<ImageData[]>([]);
+  const [currentPageData, setCurrentPageData] = useState<ImageData | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [pdfReady, setPdfReady] = useState(false);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [fontSize, setFontSize] = useState(24);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
+  const [renderedPages, setRenderedPages] = useState<Map<number, ImageData>>(new Map());
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -43,40 +45,22 @@ const EditPdf = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
-  // Load PDF and render pages
-  const loadPdf = useCallback(async () => {
+  // Load PDF metadata only (fast)
+  const loadPdfMetadata = useCallback(async () => {
     if (files.length === 0) return;
     
     setIsProcessing(true);
-    setProgress(10);
+    setProgress(20);
     
     try {
       const arrayBuffer = await files[0].file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       pdfDocRef.current = pdf;
       setTotalPages(pdf.numPages);
-      setProgress(30);
-      
-      // Render all pages to ImageData
-      const pages: ImageData[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const scale = 1.5;
-        const viewport = page.getViewport({ scale });
-        
-        const offscreen = document.createElement('canvas');
-        offscreen.width = viewport.width;
-        offscreen.height = viewport.height;
-        const ctx = offscreen.getContext('2d')!;
-        
-        await page.render({ canvasContext: ctx, viewport, canvas: offscreen }).promise;
-        pages.push(ctx.getImageData(0, 0, viewport.width, viewport.height));
-        setProgress(30 + ((i / pdf.numPages) * 60));
-      }
-      
-      setPdfPages(pages);
       setCurrentPage(0);
       setPageCanvasStates(new Map());
+      setRenderedPages(new Map());
+      setPdfReady(true);
       setProgress(100);
     } catch (error) {
       console.error('Error loading PDF:', error);
@@ -87,22 +71,68 @@ const EditPdf = () => {
     }
   }, [files]);
 
+  // Render a single page on-demand
+  const renderPage = useCallback(async (pageNum: number) => {
+    if (!pdfDocRef.current) return null;
+    
+    // Check cache first
+    const cached = renderedPages.get(pageNum);
+    if (cached) return cached;
+    
+    try {
+      const page = await pdfDocRef.current.getPage(pageNum + 1); // 1-indexed
+      const scale = 1.5;
+      const viewport = page.getViewport({ scale });
+      
+      const offscreen = document.createElement('canvas');
+      offscreen.width = viewport.width;
+      offscreen.height = viewport.height;
+      const ctx = offscreen.getContext('2d')!;
+      
+      await page.render({ canvasContext: ctx, viewport, canvas: offscreen }).promise;
+      const imageData = ctx.getImageData(0, 0, viewport.width, viewport.height);
+      
+      // Cache the rendered page
+      setRenderedPages(prev => new Map(prev).set(pageNum, imageData));
+      
+      return imageData;
+    } catch (error) {
+      console.error('Error rendering page:', error);
+      return null;
+    }
+  }, [renderedPages]);
+
+  // Load current page when it changes
+  useEffect(() => {
+    if (!pdfReady) return;
+    
+    const loadCurrentPage = async () => {
+      setIsProcessing(true);
+      const pageData = await renderPage(currentPage);
+      setCurrentPageData(pageData);
+      setIsProcessing(false);
+    };
+    
+    loadCurrentPage();
+  }, [currentPage, pdfReady, renderPage]);
+
   useEffect(() => {
     if (files.length > 0) {
-      loadPdf();
+      loadPdfMetadata();
     } else {
-      setPdfPages([]);
+      setCurrentPageData(null);
       setTotalPages(0);
       setPageCanvasStates(new Map());
+      setRenderedPages(new Map());
+      setPdfReady(false);
     }
-  }, [files, loadPdf]);
+  }, [files, loadPdfMetadata]);
 
   // Initialize Fabric canvas
   useEffect(() => {
-    if (!canvasRef.current || pdfPages.length === 0) return;
+    if (!canvasRef.current || !currentPageData) return;
     
-    const pageData = pdfPages[currentPage];
-    if (!pageData) return;
+    const pageData = currentPageData;
 
     // Dispose existing canvas
     if (fabricCanvas) {
@@ -177,7 +207,7 @@ const EditPdf = () => {
       const json = JSON.stringify(canvas.toJSON());
       setPageCanvasStates(prev => new Map(prev).set(currentPage, json));
     };
-  }, [pdfPages, currentPage]);
+  }, [currentPageData, currentPage]);
 
   // Update tool mode
   useEffect(() => {
@@ -330,7 +360,7 @@ const EditPdf = () => {
   };
 
   const savePdf = async () => {
-    if (!fabricCanvas || pdfPages.length === 0 || !files[0]) return;
+    if (!fabricCanvas || !pdfDocRef.current || !files[0]) return;
     
     setIsProcessing(true);
     setProgress(10);
@@ -345,8 +375,11 @@ const EditPdf = () => {
       const pdfDoc = await PDFDocument.load(arrayBuffer);
       const pages = pdfDoc.getPages();
       
-      for (let i = 0; i < pdfPages.length; i++) {
-        const pageData = pdfPages[i];
+      for (let i = 0; i < totalPages; i++) {
+        // Render page on-demand for saving
+        const pageData = await renderPage(i);
+        if (!pageData) continue;
+        
         const savedState = allStates.get(i);
         
         // Create a temporary canvas to render annotations
@@ -378,8 +411,6 @@ const EditPdf = () => {
           
           const page = pages[i];
           const { width, height } = page.getSize();
-          const scaleX = width / pageData.width;
-          const scaleY = height / pageData.height;
           
           page.drawImage(annotationImage, {
             x: 0,
@@ -390,7 +421,7 @@ const EditPdf = () => {
         }
         
         tempFabric.dispose();
-        setProgress(10 + ((i + 1) / pdfPages.length) * 80);
+        setProgress(10 + ((i + 1) / totalPages) * 80);
       }
       
       const pdfBytes = await pdfDoc.save();
@@ -408,10 +439,12 @@ const EditPdf = () => {
 
   const reset = () => {
     setFiles([]);
-    setPdfPages([]);
+    setCurrentPageData(null);
+    setRenderedPages(new Map());
     setPageCanvasStates(new Map());
     setCurrentPage(0);
     setTotalPages(0);
+    setPdfReady(false);
     if (fabricCanvas) {
       fabricCanvas.dispose();
       setFabricCanvas(null);
@@ -444,7 +477,7 @@ const EditPdf = () => {
             onFilesChange={setFiles}
             hideFileList
           />
-        ) : pdfPages.length === 0 ? (
+        ) : !currentPageData ? (
           <div className="text-center py-12">
             <ProgressBar progress={progress} />
             <p className="mt-4 text-muted-foreground">Loading PDF...</p>
