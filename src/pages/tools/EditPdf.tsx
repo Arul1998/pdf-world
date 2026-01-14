@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter, Bold, Italic } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -35,6 +35,9 @@ const EditPdf = () => {
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [fontSize, setFontSize] = useState(24);
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [selectedTextObject, setSelectedTextObject] = useState<IText | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
   const [history, setHistory] = useState<string[]>([]);
@@ -316,10 +319,35 @@ const EditPdf = () => {
     fabricCanvas.on('object:modified', saveState);
     fabricCanvas.on('object:removed', saveState);
 
+    // Track text object selection for formatting toolbar
+    const handleSelection = () => {
+      const activeObject = fabricCanvas.getActiveObject();
+      if (activeObject && activeObject.type === 'i-text') {
+        const textObj = activeObject as IText;
+        setSelectedTextObject(textObj);
+        setIsBold(textObj.fontWeight === 'bold');
+        setIsItalic(textObj.fontStyle === 'italic');
+        setFontSize(textObj.fontSize || 24);
+      } else {
+        setSelectedTextObject(null);
+      }
+    };
+
+    const handleDeselection = () => {
+      setSelectedTextObject(null);
+    };
+
+    fabricCanvas.on('selection:created', handleSelection);
+    fabricCanvas.on('selection:updated', handleSelection);
+    fabricCanvas.on('selection:cleared', handleDeselection);
+
     return () => {
       fabricCanvas.off('object:added', saveState);
       fabricCanvas.off('object:modified', saveState);
       fabricCanvas.off('object:removed', saveState);
+      fabricCanvas.off('selection:created', handleSelection);
+      fabricCanvas.off('selection:updated', handleSelection);
+      fabricCanvas.off('selection:cleared', handleDeselection);
     };
   }, [fabricCanvas, historyIndex]);
 
@@ -360,6 +388,8 @@ const EditPdf = () => {
         fill: activeColor,
         fontSize: fontSize,
         fontFamily: 'Arial',
+        fontWeight: isBold ? 'bold' : 'normal',
+        fontStyle: isItalic ? 'italic' : 'normal',
       });
       fabricCanvas.add(text);
       fabricCanvas.setActiveObject(text);
@@ -428,6 +458,33 @@ const EditPdf = () => {
       fabricCanvas.add(highlight);
       fabricCanvas.setActiveObject(highlight);
       setActiveTool('select');
+    }
+  };
+
+  // Text formatting handlers
+  const toggleBold = () => {
+    const newBold = !isBold;
+    setIsBold(newBold);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('fontWeight', newBold ? 'bold' : 'normal');
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const toggleItalic = () => {
+    const newItalic = !isItalic;
+    setIsItalic(newItalic);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('fontStyle', newItalic ? 'italic' : 'normal');
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const updateFontSize = (newSize: number) => {
+    setFontSize(newSize);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('fontSize', newSize);
+      fabricCanvas.renderAll();
     }
   };
 
@@ -763,6 +820,49 @@ const EditPdf = () => {
                     className="w-20"
                   />
                   <Plus className="h-3 w-3 text-muted-foreground" />
+                </div>
+              )}
+
+              {/* Text formatting toolbar */}
+              {selectedTextObject && (
+                <div className="flex items-center gap-1 border-l pl-2">
+                  <Button
+                    variant={isBold ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={toggleBold}
+                    title="Bold"
+                  >
+                    <Bold className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={isItalic ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={toggleItalic}
+                    title="Italic"
+                  >
+                    <Italic className="h-4 w-4" />
+                  </Button>
+                  <div className="flex items-center gap-1 ml-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateFontSize(Math.max(8, fontSize - 2))}
+                      disabled={fontSize <= 8}
+                      title="Decrease font size"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="text-xs w-8 text-center font-medium">{fontSize}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => updateFontSize(Math.min(120, fontSize + 2))}
+                      disabled={fontSize >= 120}
+                      title="Increase font size"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               )}
 
