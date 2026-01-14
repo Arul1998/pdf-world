@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -44,10 +44,49 @@ const EditPdf = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const renderedPagesRef = useRef<Map<number, { canvas: HTMLCanvasElement; width: number; height: number }>>(new Map());
   const fabricCanvasRef = useRef<FabricCanvas | null>(null);
   const isInitializingRef = useRef(false);
+
+  // Handle replacing the PDF file
+  const handleReplacePdf = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Please select a PDF file');
+      return;
+    }
+
+    // Clear existing state
+    if (fabricCanvasRef.current) {
+      fabricCanvasRef.current.clear();
+    }
+    setPageCanvasStates(new Map());
+    setHistory([]);
+    setHistoryIndex(-1);
+    renderedPagesRef.current = new Map();
+    pdfDocRef.current = null;
+    setCurrentPageRender(null);
+    setPdfReady(false);
+    
+    // Set new file
+    const newFile: PDFFile = { 
+      id: Math.random().toString(36).substring(2, 9),
+      name: file.name,
+      file, 
+      pageCount: 0,
+      size: file.size 
+    };
+    setFiles([newFile]);
+    
+    // Reset the input so the same file can be selected again
+    e.target.value = '';
+    
+    toast.success('PDF replaced. Annotations cleared.');
+  }, []);
 
   // Load PDF metadata only (fast)
   const loadPdfMetadata = useCallback(async () => {
@@ -509,6 +548,13 @@ const EditPdf = () => {
         className="hidden"
         onChange={handleImageUpload}
       />
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={handleReplacePdf}
+      />
 
       <div className="max-w-6xl mx-auto space-y-4">
         {files.length === 0 ? (
@@ -578,6 +624,14 @@ const EditPdf = () => {
                   title="Add Image"
                 >
                   <Image className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => replaceInputRef.current?.click()}
+                  title="Replace PDF"
+                >
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
 
