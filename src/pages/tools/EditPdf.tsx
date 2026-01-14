@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -9,12 +9,12 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { toast } from 'sonner';
 import { downloadBlob, type PDFFile } from '@/lib/pdf-tools';
-import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as FabricImage, FabricObject, PencilBrush } from 'fabric';
+import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as FabricImage, FabricObject, PencilBrush, Line, Polygon } from 'fabric';
 import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 import { PDFDocument, rgb } from 'pdf-lib';
 
 
-type Tool = 'select' | 'draw' | 'text' | 'rectangle' | 'circle' | 'image';
+type Tool = 'select' | 'draw' | 'text' | 'rectangle' | 'circle' | 'image' | 'line' | 'arrow' | 'highlight';
 
 const COLORS = [
   '#000000', '#ffffff', '#ef4444', '#f97316', '#eab308', 
@@ -367,6 +367,67 @@ const EditPdf = () => {
       setActiveTool('select');
     } else if (tool === 'image') {
       fileInputRef.current?.click();
+    } else if (tool === 'line') {
+      const centerX = fabricCanvas.width! / 2;
+      const centerY = fabricCanvas.height! / 2;
+      const line = new Line([centerX - 50, centerY, centerX + 50, centerY], {
+        stroke: activeColor,
+        strokeWidth: 3,
+        selectable: true,
+      });
+      fabricCanvas.add(line);
+      fabricCanvas.setActiveObject(line);
+      setActiveTool('select');
+    } else if (tool === 'arrow') {
+      const centerX = fabricCanvas.width! / 2;
+      const centerY = fabricCanvas.height! / 2;
+      const lineLength = 100;
+      const arrowHeadSize = 15;
+      
+      // Create the line part
+      const line = new Line([centerX - lineLength/2, centerY, centerX + lineLength/2 - arrowHeadSize, centerY], {
+        stroke: activeColor,
+        strokeWidth: 3,
+      });
+      
+      // Create arrowhead as a triangle
+      const arrowHead = new Polygon([
+        { x: centerX + lineLength/2, y: centerY },
+        { x: centerX + lineLength/2 - arrowHeadSize, y: centerY - arrowHeadSize/2 },
+        { x: centerX + lineLength/2 - arrowHeadSize, y: centerY + arrowHeadSize/2 },
+      ], {
+        fill: activeColor,
+        stroke: activeColor,
+        strokeWidth: 1,
+      });
+      
+      // Group them together by adding separately (fabric v6 approach)
+      fabricCanvas.add(line);
+      fabricCanvas.add(arrowHead);
+      fabricCanvas.setActiveObject(arrowHead);
+      setActiveTool('select');
+    } else if (tool === 'highlight') {
+      const highlight = new Rect({
+        left: fabricCanvas.width! / 2 - 75,
+        top: fabricCanvas.height! / 2 - 10,
+        fill: activeColor === '#000000' ? 'rgba(255, 235, 59, 0.4)' : activeColor.replace(')', ', 0.4)').replace('rgb', 'rgba'),
+        width: 150,
+        height: 24,
+        selectable: true,
+        rx: 2,
+        ry: 2,
+      });
+      // Apply semi-transparent fill for highlight effect
+      const hexToRgba = (hex: string, alpha: number) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      };
+      highlight.set('fill', activeColor === '#000000' ? 'rgba(255, 235, 59, 0.4)' : hexToRgba(activeColor, 0.4));
+      fabricCanvas.add(highlight);
+      fabricCanvas.setActiveObject(highlight);
+      setActiveTool('select');
     }
   };
 
@@ -616,6 +677,30 @@ const EditPdf = () => {
                   title="Add Circle"
                 >
                   <Circle className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleToolClick('line')}
+                  title="Add Line"
+                >
+                  <LineIcon className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleToolClick('arrow')}
+                  title="Add Arrow"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleToolClick('highlight')}
+                  title="Add Highlight"
+                >
+                  <Highlighter className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
