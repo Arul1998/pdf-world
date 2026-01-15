@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter, Bold, Italic, Underline, Strikethrough, Palette, ALargeSmall, MoveHorizontal } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -41,6 +41,9 @@ const EditPdf = () => {
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
   const [isStrikethrough, setIsStrikethrough] = useState(false);
+  const [textColor, setTextColor] = useState('#000000');
+  const [charSpacing, setCharSpacing] = useState(0);
+  const [lineHeight, setLineHeight] = useState(1.16);
   const [selectedTextObject, setSelectedTextObject] = useState<IText | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
@@ -335,6 +338,9 @@ const EditPdf = () => {
         setIsStrikethrough(textObj.linethrough === true);
         setFontSize(textObj.fontSize || 24);
         setFontFamily((textObj.fontFamily as string) || 'Arial');
+        setTextColor((textObj.fill as string) || '#000000');
+        setCharSpacing(textObj.charSpacing || 0);
+        setLineHeight(textObj.lineHeight || 1.16);
       } else {
         setSelectedTextObject(null);
       }
@@ -392,11 +398,13 @@ const EditPdf = () => {
       const text = new IText('Click to edit', {
         left: fabricCanvas.width! / 2 - 60,
         top: fabricCanvas.height! / 2 - 15,
-        fill: activeColor,
+        fill: textColor,
         fontSize: fontSize,
         fontFamily: fontFamily,
         fontWeight: isBold ? 'bold' : 'normal',
         fontStyle: isItalic ? 'italic' : 'normal',
+        charSpacing: charSpacing,
+        lineHeight: lineHeight,
       });
       fabricCanvas.add(text);
       fabricCanvas.setActiveObject(text);
@@ -517,6 +525,30 @@ const EditPdf = () => {
     setFontFamily(newFamily);
     if (selectedTextObject && fabricCanvas) {
       selectedTextObject.set('fontFamily', newFamily);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const updateTextColor = (newColor: string) => {
+    setTextColor(newColor);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('fill', newColor);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const updateCharSpacing = (newSpacing: number) => {
+    setCharSpacing(newSpacing);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('charSpacing', newSpacing);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const updateLineHeight = (newHeight: number) => {
+    setLineHeight(newHeight);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('lineHeight', newHeight);
       fabricCanvas.renderAll();
     }
   };
@@ -871,7 +903,38 @@ const EditPdf = () => {
 
               {/* Text formatting toolbar */}
               {selectedTextObject && (
-                <div className="flex items-center gap-2 border-l pl-2">
+                <div className="flex items-center gap-2 border-l pl-2 flex-wrap">
+                  {/* Text Color Picker */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1" title="Text Color">
+                        <Palette className="h-4 w-4" />
+                        <div 
+                          className="w-4 h-4 rounded border border-border" 
+                          style={{ backgroundColor: textColor }}
+                        />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-2">
+                      <div className="grid grid-cols-5 gap-1">
+                        {COLORS.map((color) => (
+                          <button
+                            key={`text-${color}`}
+                            className={`w-6 h-6 rounded border-2 ${textColor === color ? 'border-primary' : 'border-transparent'}`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => updateTextColor(color)}
+                          />
+                        ))}
+                      </div>
+                      <Input
+                        type="color"
+                        value={textColor}
+                        onChange={(e) => updateTextColor(e.target.value)}
+                        className="w-full h-8 mt-2"
+                      />
+                    </PopoverContent>
+                  </Popover>
+
                   <Select value={fontFamily} onValueChange={updateFontFamily}>
                     <SelectTrigger className="w-32 h-8 text-xs">
                       <SelectValue placeholder="Font" />
@@ -916,7 +979,7 @@ const EditPdf = () => {
                   >
                     <Strikethrough className="h-4 w-4" />
                   </Button>
-                  <div className="flex items-center gap-1 ml-1">
+                  <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -937,6 +1000,56 @@ const EditPdf = () => {
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
+
+                  {/* Letter Spacing */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" title="Letter Spacing">
+                        <MoveHorizontal className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Letter Spacing</label>
+                        <div className="flex items-center gap-2">
+                          <Slider
+                            value={[charSpacing]}
+                            onValueChange={([v]) => updateCharSpacing(v)}
+                            min={-50}
+                            max={200}
+                            step={10}
+                            className="flex-1"
+                          />
+                          <span className="text-xs w-8 text-right">{charSpacing}</span>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Line Height */}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="sm" title="Line Height">
+                        <ALargeSmall className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium">Line Height</label>
+                        <div className="flex items-center gap-2">
+                          <Slider
+                            value={[lineHeight * 100]}
+                            onValueChange={([v]) => updateLineHeight(v / 100)}
+                            min={80}
+                            max={300}
+                            step={10}
+                            className="flex-1"
+                          />
+                          <span className="text-xs w-10 text-right">{lineHeight.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 
