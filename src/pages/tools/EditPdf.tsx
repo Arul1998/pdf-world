@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter, Bold, Italic } from 'lucide-react';
+import { PenTool, Download, Type, Square, Circle, Image, Pencil, MousePointer, ChevronLeft, ChevronRight, Trash2, Undo, Redo, Minus, Plus, ZoomIn, ZoomOut, RefreshCw, ArrowRight, Minus as LineIcon, Highlighter, Bold, Italic, Underline, Strikethrough } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -39,6 +39,8 @@ const EditPdf = () => {
   const [fontFamily, setFontFamily] = useState('Arial');
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
+  const [isStrikethrough, setIsStrikethrough] = useState(false);
   const [selectedTextObject, setSelectedTextObject] = useState<IText | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
@@ -329,6 +331,8 @@ const EditPdf = () => {
         setSelectedTextObject(textObj);
         setIsBold(textObj.fontWeight === 'bold');
         setIsItalic(textObj.fontStyle === 'italic');
+        setIsUnderline(textObj.underline === true);
+        setIsStrikethrough(textObj.linethrough === true);
         setFontSize(textObj.fontSize || 24);
         setFontFamily((textObj.fontFamily as string) || 'Arial');
       } else {
@@ -479,6 +483,24 @@ const EditPdf = () => {
     setIsItalic(newItalic);
     if (selectedTextObject && fabricCanvas) {
       selectedTextObject.set('fontStyle', newItalic ? 'italic' : 'normal');
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const toggleUnderline = () => {
+    const newUnderline = !isUnderline;
+    setIsUnderline(newUnderline);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('underline', newUnderline);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const toggleStrikethrough = () => {
+    const newStrikethrough = !isStrikethrough;
+    setIsStrikethrough(newStrikethrough);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('linethrough', newStrikethrough);
       fabricCanvas.renderAll();
     }
   };
@@ -877,6 +899,22 @@ const EditPdf = () => {
                     title="Italic"
                   >
                     <Italic className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={isUnderline ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={toggleUnderline}
+                    title="Underline"
+                  >
+                    <Underline className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={isStrikethrough ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={toggleStrikethrough}
+                    title="Strikethrough"
+                  >
+                    <Strikethrough className="h-4 w-4" />
                   </Button>
                   <div className="flex items-center gap-1 ml-1">
                     <Button
