@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as FabricImage, FabricObject, PencilBrush, Line, Polygon } from 'fabric';
@@ -35,6 +36,7 @@ const EditPdf = () => {
   const [activeColor, setActiveColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [fontSize, setFontSize] = useState(24);
+  const [fontFamily, setFontFamily] = useState('Arial');
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [selectedTextObject, setSelectedTextObject] = useState<IText | null>(null);
@@ -328,6 +330,7 @@ const EditPdf = () => {
         setIsBold(textObj.fontWeight === 'bold');
         setIsItalic(textObj.fontStyle === 'italic');
         setFontSize(textObj.fontSize || 24);
+        setFontFamily((textObj.fontFamily as string) || 'Arial');
       } else {
         setSelectedTextObject(null);
       }
@@ -387,7 +390,7 @@ const EditPdf = () => {
         top: fabricCanvas.height! / 2 - 15,
         fill: activeColor,
         fontSize: fontSize,
-        fontFamily: 'Arial',
+        fontFamily: fontFamily,
         fontWeight: isBold ? 'bold' : 'normal',
         fontStyle: isItalic ? 'italic' : 'normal',
       });
@@ -487,6 +490,27 @@ const EditPdf = () => {
       fabricCanvas.renderAll();
     }
   };
+
+  const updateFontFamily = (newFamily: string) => {
+    setFontFamily(newFamily);
+    if (selectedTextObject && fabricCanvas) {
+      selectedTextObject.set('fontFamily', newFamily);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const FONT_FAMILIES = [
+    'Arial',
+    'Helvetica',
+    'Times New Roman',
+    'Georgia',
+    'Courier New',
+    'Verdana',
+    'Trebuchet MS',
+    'Comic Sans MS',
+    'Impact',
+    'Lucida Console',
+  ];
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -825,7 +849,19 @@ const EditPdf = () => {
 
               {/* Text formatting toolbar */}
               {selectedTextObject && (
-                <div className="flex items-center gap-1 border-l pl-2">
+                <div className="flex items-center gap-2 border-l pl-2">
+                  <Select value={fontFamily} onValueChange={updateFontFamily}>
+                    <SelectTrigger className="w-32 h-8 text-xs">
+                      <SelectValue placeholder="Font" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_FAMILIES.map((font) => (
+                        <SelectItem key={font} value={font} style={{ fontFamily: font }}>
+                          {font}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant={isBold ? 'default' : 'ghost'}
                     size="sm"
