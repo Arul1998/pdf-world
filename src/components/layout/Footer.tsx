@@ -52,7 +52,7 @@ export const Footer = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} PDF World. Free forever. No account required.</p>
+          <p>© 2025 PDF World. Free forever. No account required.</p>
         </div>
       </div>
     </footer>
