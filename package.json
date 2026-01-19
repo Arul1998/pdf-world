@@ -72,6 +72,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "^7.0.0",
     "vaul": "^0.9.9",
+    "vite-plugin-pwa": "^1.2.0",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
   },
