@@ -5,6 +5,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useSEO } from '@/hooks/useSEO';
+import { useToolStructuredData } from '@/components/StructuredData';
 
 interface ToolLayoutProps {
   title: string;
@@ -27,6 +28,13 @@ export const ToolLayout = ({
   useSEO({
     title,
     description: `${description} Free online tool, 100% private - files never leave your browser.`,
+  });
+
+  // Add JSON-LD structured data
+  useToolStructuredData({
+    name: title,
+    description: `${description} Free online tool, 100% private - files never leave your browser.`,
+    category: category.replace('-', ' '),
   });
 
   const colorClasses: Record<string, string> = {

@@ -5,6 +5,7 @@ import { ToolCard } from '@/components/ToolCard';
 import { Button } from '@/components/ui/button';
 import { toolCategories, getToolsByCategory } from '@/lib/tool-definitions';
 import { cn } from '@/lib/utils';
+import { useHomeStructuredData } from '@/components/StructuredData';
 
 const features = [
   {
@@ -70,6 +71,9 @@ const categoryColors: Record<string, { bg: string; border: string; gradient: str
 };
 
 const Index = () => {
+  // Add structured data for homepage SEO
+  useHomeStructuredData();
+
   return (
     <Layout>
       {/* Hero Section */}
