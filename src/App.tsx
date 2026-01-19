@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { ThemeProvider } from "next-themes";
 
 // Eagerly load the main page for fast initial load
 import Index from "./pages/Index";
@@ -58,58 +59,60 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Suspense fallback={<LoadingSpinner />}>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/tools/merge" element={<MergePdf />} />
-            <Route path="/tools/split" element={<SplitPdf />} />
-            <Route path="/tools/compress" element={<CompressPdf />} />
-            <Route path="/tools/rotate" element={<RotatePdf />} />
-            <Route path="/tools/jpg-to-pdf" element={<JpgToPdf />} />
-            <Route path="/tools/pdf-to-jpg" element={<PdfToJpg />} />
-            <Route path="/tools/page-numbers" element={<PageNumbers />} />
-            <Route path="/tools/watermark" element={<Watermark />} />
-            <Route path="/tools/remove-pages" element={<RemovePages />} />
-            <Route path="/tools/extract-pages" element={<ExtractPages />} />
-            <Route path="/tools/organize-pages" element={<OrganizePages />} />
-            <Route path="/tools/unlock" element={<UnlockPdf />} />
-            <Route path="/tools/protect" element={<ProtectPdf />} />
-            <Route path="/tools/sign" element={<SignPdf />} />
-            <Route path="/tools/pdf-to-word" element={<PdfToWord />} />
-            <Route path="/tools/word-to-pdf" element={<WordToPdf />} />
-            <Route path="/tools/crop" element={<CropPdf />} />
-            <Route path="/tools/redact" element={<RedactPdf />} />
-            <Route path="/tools/compare" element={<ComparePdf />} />
-            <Route path="/tools/copy-pdf" element={<CopyPdf />} />
-            <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
-            <Route path="/tools/repair" element={<RepairPdf />} />
-            <Route path="/tools/ocr" element={<OcrPdf />} />
-            <Route path="/tools/excel-to-pdf" element={<ExcelToPdf />} />
-            <Route path="/tools/ppt-to-pdf" element={<PptToPdf />} />
-            <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
-            <Route path="/tools/edit-pdf" element={<EditPdf />} />
-            <Route path="/tools/pdf-filler" element={<PdfFiller />} />
-            <Route path="/tools/html-to-pdf" element={<HtmlToPdf />} />
-            <Route path="/tools/office-to-pdf" element={<OfficeToPdf />} />
-            <Route path="/tools/pdf-to-word-ocr" element={<PdfToWordOcr />} />
-            <Route path="/tools/pdf-to-excel-ocr" element={<PdfToExcelOcr />} />
-            <Route path="/tools/pdf-to-ppt" element={<PdfToPpt />} />
-            <Route path="/tools/pdf-to-pdfa" element={<PdfToPdfa />} />
-            <Route path="/tools/workflow" element={<Workflow />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ScrollToTop />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/tools/merge" element={<MergePdf />} />
+              <Route path="/tools/split" element={<SplitPdf />} />
+              <Route path="/tools/compress" element={<CompressPdf />} />
+              <Route path="/tools/rotate" element={<RotatePdf />} />
+              <Route path="/tools/jpg-to-pdf" element={<JpgToPdf />} />
+              <Route path="/tools/pdf-to-jpg" element={<PdfToJpg />} />
+              <Route path="/tools/page-numbers" element={<PageNumbers />} />
+              <Route path="/tools/watermark" element={<Watermark />} />
+              <Route path="/tools/remove-pages" element={<RemovePages />} />
+              <Route path="/tools/extract-pages" element={<ExtractPages />} />
+              <Route path="/tools/organize-pages" element={<OrganizePages />} />
+              <Route path="/tools/unlock" element={<UnlockPdf />} />
+              <Route path="/tools/protect" element={<ProtectPdf />} />
+              <Route path="/tools/sign" element={<SignPdf />} />
+              <Route path="/tools/pdf-to-word" element={<PdfToWord />} />
+              <Route path="/tools/word-to-pdf" element={<WordToPdf />} />
+              <Route path="/tools/crop" element={<CropPdf />} />
+              <Route path="/tools/redact" element={<RedactPdf />} />
+              <Route path="/tools/compare" element={<ComparePdf />} />
+              <Route path="/tools/copy-pdf" element={<CopyPdf />} />
+              <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
+              <Route path="/tools/repair" element={<RepairPdf />} />
+              <Route path="/tools/ocr" element={<OcrPdf />} />
+              <Route path="/tools/excel-to-pdf" element={<ExcelToPdf />} />
+              <Route path="/tools/ppt-to-pdf" element={<PptToPdf />} />
+              <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
+              <Route path="/tools/edit-pdf" element={<EditPdf />} />
+              <Route path="/tools/pdf-filler" element={<PdfFiller />} />
+              <Route path="/tools/html-to-pdf" element={<HtmlToPdf />} />
+              <Route path="/tools/office-to-pdf" element={<OfficeToPdf />} />
+              <Route path="/tools/pdf-to-word-ocr" element={<PdfToWordOcr />} />
+              <Route path="/tools/pdf-to-excel-ocr" element={<PdfToExcelOcr />} />
+              <Route path="/tools/pdf-to-ppt" element={<PdfToPpt />} />
+              <Route path="/tools/pdf-to-pdfa" element={<PdfToPdfa />} />
+              <Route path="/tools/workflow" element={<Workflow />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
