@@ -15,30 +15,31 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.ico", "favicon.png", "favicon.svg"],
+      includeAssets: ["favicon.ico", "favicon.png", "favicon.svg", "pwa-icon-192.png", "pwa-icon-512.png"],
       manifest: {
         name: "PDF World - Free Online PDF Editor",
         short_name: "PDF World",
         description: "Free online PDF tools: merge, split, compress, rotate, convert PDFs. 100% client-side, your files never leave your browser.",
-        theme_color: "#ef4444",
-        background_color: "#ffffff",
+        theme_color: "#7c3aed",
+        background_color: "#f8fafc",
         display: "standalone",
         orientation: "portrait",
         scope: "/",
         start_url: "/",
+        categories: ["productivity", "utilities"],
         icons: [
           {
-            src: "/favicon.png",
+            src: "/pwa-icon-192.png",
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/favicon.png",
+            src: "/pwa-icon-512.png",
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "/favicon.png",
+            src: "/pwa-icon-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
