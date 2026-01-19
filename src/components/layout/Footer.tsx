@@ -13,7 +13,7 @@ export const Footer = () => {
               <Logo iconClassName="h-7 w-7" />
             </Link>
             <p className="text-muted-foreground text-sm max-w-sm">
-              Free, open-source PDF tools that work 100% in your browser. 
+              Free online PDF tools that work 100% in your browser. 
               Your files never leave your device.
             </p>
             <div className="flex gap-4 mt-6">
