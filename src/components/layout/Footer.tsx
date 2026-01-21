@@ -26,11 +26,7 @@ export const Footer = () => {
               <span>No Upload</span>
             </div>
           </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="mb-8">
-          <ul className="flex flex-wrap gap-6 text-sm">
+          <ul className="flex flex-wrap gap-6 text-sm mt-6">
             <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
             <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
             <li><Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link></li>
