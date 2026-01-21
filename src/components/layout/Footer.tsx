@@ -28,6 +28,16 @@ export const Footer = () => {
           </div>
         </div>
 
+        {/* Quick Links */}
+        <div className="mb-8">
+          <ul className="flex flex-wrap gap-6 text-sm">
+            <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
+            <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
+            <li><Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link></li>
+            <li><Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</Link></li>
+          </ul>
+        </div>
+
         {/* Tools Grid */}
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-10">
           {toolCategories.map((category) => {
@@ -52,19 +62,11 @@ export const Footer = () => {
           })}
         </div>
 
-        {/* Legal Links */}
+        {/* Copyright */}
         <div className="pt-8 border-t border-border">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-muted-foreground">
-              © 2025 PDF World. Free forever. No account required.
-            </p>
-            <ul className="flex gap-6 text-sm">
-              <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
-              <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
-              <li><Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link></li>
-              <li><Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</Link></li>
-            </ul>
-          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            © 2025 PDF World. Free forever. No account required.
+          </p>
         </div>
       </div>
     </footer>
