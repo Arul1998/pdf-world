@@ -12,10 +12,18 @@ export const Footer = () => {
           <Link to="/" className="inline-block mb-4">
             <Logo iconClassName="h-7 w-7" />
           </Link>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            Free online PDF tools that work 100% in your browser. 
-            Your files never leave your device.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Free online PDF tools that work 100% in your browser. 
+              Your files never leave your device.
+            </p>
+            <ul className="flex flex-wrap gap-6 text-sm">
+              <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
+              <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
+              <li><Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link></li>
+              <li><Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</Link></li>
+            </ul>
+          </div>
           <div className="flex gap-4 mt-6">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Shield className="h-4 w-4 text-success" />
@@ -26,12 +34,6 @@ export const Footer = () => {
               <span>No Upload</span>
             </div>
           </div>
-          <ul className="flex flex-wrap gap-6 text-sm mt-6">
-            <li><Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
-            <li><Link to="/terms" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
-            <li><Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors">FAQ</Link></li>
-            <li><Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors">Contact</Link></li>
-          </ul>
         </div>
 
         {/* Tools Grid */}
