@@ -108,7 +108,7 @@ const Index = () => {
             </p>
             
             <div className="flex flex-wrap items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <Button asChild size="lg" className="text-base h-14 px-10 rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
+              <Button asChild size="lg" className="text-base h-14 px-10 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 bg-gradient-to-r from-primary via-primary to-accent hover:from-primary hover:via-accent hover:to-primary bg-[length:200%_auto] hover:bg-right">
                 <a href="#all-tools">
                   Explore All Tools
                   <ArrowRight className="ml-2 h-5 w-5" />
@@ -119,9 +119,9 @@ const Index = () => {
             {/* Stats */}
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16 mt-16 animate-fade-in" style={{ animationDelay: '0.4s' }}>
               {[
-                { value: '25+', label: 'Tools Available' },
+                { value: '35+', label: 'PDF Tools' },
                 { value: '100%', label: 'Free Forever' },
-                { value: '0', label: 'Data Stored' },
+                { value: '∞', label: 'Unlimited Usage' },
               ].map((stat) => (
                 <div key={stat.label} className="text-center">
                   <div className="text-3xl md:text-4xl font-bold text-foreground">{stat.value}</div>
