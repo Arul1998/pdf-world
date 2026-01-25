@@ -44,16 +44,20 @@ export const Footer = () => {
               <div key={category.id}>
                 <h4 className="font-semibold text-foreground mb-4 text-sm">{category.name}</h4>
                 <ul className="space-y-2 text-sm">
-                  {categoryTools.map((tool) => (
-                    <li key={tool.id}>
-                      <Link 
-                        to={tool.path} 
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {tool.name}
-                      </Link>
-                    </li>
-                  ))}
+                  {categoryTools.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <li key={tool.id}>
+                        <Link 
+                          to={tool.path} 
+                          className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {tool.name}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             );
