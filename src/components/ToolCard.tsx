@@ -83,8 +83,9 @@ export const ToolCard = ({ tool, variant = 'default' }: ToolCardProps) => {
       className={cn(
         "group relative flex flex-col p-6 rounded-2xl transition-all duration-300",
         "bg-card border border-border",
-        "hover:shadow-lg hover:border-transparent hover:-translate-y-1",
+        "hover:shadow-xl hover:border-transparent hover:-translate-y-2",
         "ring-0 ring-transparent hover:ring-4",
+        "hover:scale-[1.02]",
         colors.glow,
         tool.comingSoon && "opacity-60 cursor-not-allowed"
       )}
