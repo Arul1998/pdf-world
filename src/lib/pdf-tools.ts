@@ -46,7 +46,7 @@ export const getPdfPageCount = async (file: File): Promise<number> => {
   return pdfDoc.getPageCount();
 };
 
-export const generatePdfThumbnail = async (file: File, timeoutMs: number = 5000): Promise<string> => {
+export const generatePdfThumbnail = async (file: File, timeoutMs: number = 4000): Promise<string> => {
   // Create a timeout promise
   const timeoutPromise = new Promise<string>((_, reject) => {
     setTimeout(() => reject(new Error('Thumbnail generation timeout')), timeoutMs);
@@ -59,7 +59,7 @@ export const generatePdfThumbnail = async (file: File, timeoutMs: number = 5000)
     const page = await pdf.getPage(1);
     
     // Use smaller scale for faster rendering
-    const scale = 0.3;
+    const scale = 0.25;
     const viewport = page.getViewport({ scale });
     
     const canvas = document.createElement('canvas');
@@ -71,7 +71,10 @@ export const generatePdfThumbnail = async (file: File, timeoutMs: number = 5000)
     
     await page.render({ canvasContext: context, viewport, canvas }).promise;
     
-    return canvas.toDataURL('image/jpeg', 0.6);
+    // Clean up PDF resources
+    pdf.destroy();
+    
+    return canvas.toDataURL('image/jpeg', 0.5);
   })();
 
   try {
