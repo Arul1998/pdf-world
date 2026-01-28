@@ -55,23 +55,19 @@ export const FileDropZone = ({
     setIsProcessing(true);
     setProcessingCount({ current: 0, total: fileArray.length });
 
-    const processedFiles: PDFFile[] = [];
-    
-    for (let i = 0; i < fileArray.length; i++) {
-      const file = fileArray[i];
-      setProcessingCount({ current: i + 1, total: fileArray.length });
-      
+    // Process files in parallel for speed
+    const processFile = async (file: File, index: number): Promise<PDFFile | null> => {
       // Validate file size
       if (file.size > maxSize) {
         setError(`File "${file.name}" exceeds maximum size of ${formatFileSize(maxSize)}`);
-        continue;
+        return null;
       }
       
       // Validate file type
       const extension = '.' + file.name.split('.').pop()?.toLowerCase();
       if (!accept.includes(extension) && !accept.includes(file.type)) {
         setError(`File type "${extension}" is not supported`);
-        continue;
+        return null;
       }
 
       const pdfFile: PDFFile = {
@@ -81,7 +77,7 @@ export const FileDropZone = ({
         size: file.size,
       };
 
-      // Get page count and thumbnail for PDFs (with individual timeouts to prevent hanging)
+      // Get page count and thumbnail for PDFs
       if (extension === '.pdf' && processPdfMetadata) {
         // Get page count - fast operation
         try {
@@ -90,16 +86,26 @@ export const FileDropZone = ({
           // File might be corrupted, still add it
         }
         
-        // Generate thumbnail asynchronously - don't block on this
-        // Use a short timeout per file to prevent hanging
+        // Generate thumbnail with timeout
         try {
-          pdfFile.thumbnail = await generatePdfThumbnail(file, 3000);
+          pdfFile.thumbnail = await generatePdfThumbnail(file, 4000);
         } catch {
           // Thumbnail failed, continue without it
         }
       }
 
-      processedFiles.push(pdfFile);
+      setProcessingCount(prev => ({ ...prev, current: prev.current + 1 }));
+      return pdfFile;
+    };
+
+    // Process all files in parallel (batch of 3 at a time to avoid overwhelming the browser)
+    const batchSize = 3;
+    const processedFiles: PDFFile[] = [];
+    
+    for (let i = 0; i < fileArray.length; i += batchSize) {
+      const batch = fileArray.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map((file, idx) => processFile(file, i + idx)));
+      processedFiles.push(...results.filter((f): f is PDFFile => f !== null));
     }
 
     setIsProcessing(false);
@@ -111,7 +117,7 @@ export const FileDropZone = ({
     } else {
       onFilesChange(processedFiles.slice(0, 1));
     }
-  }, [accept, files, maxFiles, maxSize, multiple, onFilesChange]);
+  }, [accept, files, maxFiles, maxSize, multiple, onFilesChange, processPdfMetadata]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
