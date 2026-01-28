@@ -81,13 +81,21 @@ export const FileDropZone = ({
         size: file.size,
       };
 
-      // Get page count and thumbnail for PDFs
+      // Get page count and thumbnail for PDFs (with individual timeouts to prevent hanging)
       if (extension === '.pdf' && processPdfMetadata) {
+        // Get page count - fast operation
         try {
           pdfFile.pageCount = await getPdfPageCount(file);
-          pdfFile.thumbnail = await generatePdfThumbnail(file);
         } catch {
           // File might be corrupted, still add it
+        }
+        
+        // Generate thumbnail asynchronously - don't block on this
+        // Use a short timeout per file to prevent hanging
+        try {
+          pdfFile.thumbnail = await generatePdfThumbnail(file, 3000);
+        } catch {
+          // Thumbnail failed, continue without it
         }
       }
 

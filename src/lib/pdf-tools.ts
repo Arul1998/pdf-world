@@ -46,14 +46,20 @@ export const getPdfPageCount = async (file: File): Promise<number> => {
   return pdfDoc.getPageCount();
 };
 
-export const generatePdfThumbnail = async (file: File): Promise<string> => {
-  try {
+export const generatePdfThumbnail = async (file: File, timeoutMs: number = 5000): Promise<string> => {
+  // Create a timeout promise
+  const timeoutPromise = new Promise<string>((_, reject) => {
+    setTimeout(() => reject(new Error('Thumbnail generation timeout')), timeoutMs);
+  });
+
+  const generatePromise = (async () => {
     const arrayBuffer = await readFileAsArrayBuffer(file);
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
     const pdf = await loadingTask.promise;
     const page = await pdf.getPage(1);
     
-    const scale = 0.5;
+    // Use smaller scale for faster rendering
+    const scale = 0.3;
     const viewport = page.getViewport({ scale });
     
     const canvas = document.createElement('canvas');
@@ -65,9 +71,13 @@ export const generatePdfThumbnail = async (file: File): Promise<string> => {
     
     await page.render({ canvasContext: context, viewport, canvas }).promise;
     
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.6);
+  })();
+
+  try {
+    return await Promise.race([generatePromise, timeoutPromise]);
   } catch (error) {
-    console.error('Failed to generate thumbnail:', error);
+    console.warn('Thumbnail generation failed or timed out:', error);
     return '';
   }
 };
