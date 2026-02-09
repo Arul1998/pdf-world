@@ -67,7 +67,7 @@ export const Footer = () => {
         {/* Copyright */}
         <div className="pt-8 border-t border-border">
           <p className="text-sm text-muted-foreground text-center">
-            © 2025 PDF World. Free forever. No account required.
+            © {new Date().getFullYear()} PDF World. Free forever. No account required.
           </p>
         </div>
       </div>

@@ -51,10 +51,10 @@ const categoryColors: Record<string, { bg: string; border: string; gradient: str
     iconBg: 'bg-info/10 text-info'
   },
   'convert-from': { 
-    bg: 'bg-[hsl(280,67%,75%)]/5', 
-    border: 'border-[hsl(280,67%,75%)]/20',
-    gradient: 'from-[hsl(280,67%,75%)]/10 via-[hsl(280,67%,75%)]/5 to-transparent',
-    iconBg: 'bg-[hsl(280,67%,75%)]/10 text-[hsl(280,67%,75%)]'
+    bg: 'bg-convert-from/5', 
+    border: 'border-convert-from/20',
+    gradient: 'from-convert-from/10 via-convert-from/5 to-transparent',
+    iconBg: 'bg-convert-from/10 text-convert-from'
   },
   edit: { 
     bg: 'bg-warning/5', 
@@ -81,7 +81,7 @@ const Index = () => {
         {/* Decorative elements */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[hsl(280,67%,75%)]/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-convert-from/5 rounded-full blur-3xl" />
         
         <div className="container relative py-20 md:py-28 lg:py-36">
           <div className="max-w-4xl mx-auto text-center">
@@ -256,7 +256,7 @@ const Index = () => {
             {/* Background */}
             <div className="absolute inset-0 gradient-primary opacity-90" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,hsl(var(--accent)/0.3),transparent_50%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(280,67%,75%,0.2),transparent_50%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,hsl(var(--convert-from)/0.2),transparent_50%)]" />
             
             <div className="relative">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 text-white text-sm font-medium mb-6">
