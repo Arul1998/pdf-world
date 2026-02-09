@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { FileOutput, Download, Loader2 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { PdfFileCard } from '@/components/PdfFileCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +16,8 @@ const ExtractPages = () => {
   const [pagesToExtract, setPagesToExtract] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [extractedCount, setExtractedCount] = useState(0);
 
   const parsePages = (input: string): number[] => {
     const results: number[] = [];
@@ -36,6 +40,13 @@ const ExtractPages = () => {
     }
     
     return results.sort((a, b) => a - b);
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setPagesToExtract('');
+    setIsComplete(false);
+    setExtractedCount(0);
   };
 
   const handleExtract = async () => {
@@ -69,15 +80,35 @@ const ExtractPages = () => {
       downloadBlob(result, filename);
       setProgress(100);
       
+      setExtractedCount(pages.length);
+      setIsComplete(true);
       toast.success(`Extracted ${pages.length} page(s) successfully!`);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to extract pages. Please try again.');
+      toast.error('Failed to extract pages. The file may be corrupted.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
     }
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="Extract Pages"
+        description="Extract specific pages from your PDF to create a new document."
+        icon={FileOutput}
+        category="organize"
+        categoryColor="organize"
+      >
+        <SuccessResult
+          message={`Extracted ${extractedCount} page(s) successfully!`}
+          detail={`From ${files[0]?.name}`}
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -97,6 +128,15 @@ const ExtractPages = () => {
           buttonText="Select File"
           buttonTextWithFiles="Change File"
         />
+
+        {/* File preview card */}
+        {files.length > 0 && (
+          <div className="flex justify-center">
+            <div className="w-40">
+              <PdfFileCard file={files[0]} onRemove={() => setFiles([])} />
+            </div>
+          </div>
+        )}
 
         {files.length > 0 && files[0].pageCount && (
           <div className="space-y-4 p-4 bg-muted/50 rounded-xl">
