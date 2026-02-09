@@ -41,7 +41,7 @@ export const ToolLayout = ({
     organize: 'bg-primary/10 text-primary',
     optimize: 'bg-success/10 text-success',
     'convert-to': 'bg-info/10 text-info',
-    'convert-from': 'bg-[hsl(262,83%,58%)]/10 text-[hsl(262,83%,58%)]',
+    'convert-from': 'bg-convert-from/10 text-convert-from',
     edit: 'bg-warning/10 text-warning',
     security: 'bg-foreground/10 text-foreground',
   };
