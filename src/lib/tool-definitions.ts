@@ -386,7 +386,7 @@ export const tools: Tool[] = [
     name: 'Workflow',
     description: 'Create automated PDF workflows',
     icon: Workflow,
-    category: 'security',
+    category: 'organize',
     path: '/tools/workflow',
     accepts: ['.pdf'],
   },

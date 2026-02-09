@@ -30,9 +30,9 @@ export const ToolCard = ({ tool, variant = 'default' }: ToolCardProps) => {
       glow: 'group-hover:ring-info/20'
     },
     'convert-from': { 
-      icon: 'bg-[hsl(280,67%,75%)]/10 text-[hsl(280,67%,75%)]',
-      hover: 'group-hover:bg-[hsl(280,67%,75%)] group-hover:text-white group-hover:shadow-lg group-hover:shadow-[hsl(280,67%,75%)]/20',
-      glow: 'group-hover:ring-[hsl(280,67%,75%)]/20'
+      icon: 'bg-convert-from/10 text-convert-from',
+      hover: 'group-hover:bg-convert-from group-hover:text-white group-hover:shadow-lg group-hover:shadow-convert-from/20',
+      glow: 'group-hover:ring-convert-from/20'
     },
     edit: { 
       icon: 'bg-warning/10 text-warning',
