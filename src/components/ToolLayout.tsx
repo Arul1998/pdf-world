@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, LucideIcon } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
+import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { cn } from '@/lib/utils';
 import { useSEO } from '@/hooks/useSEO';
 import { useToolStructuredData } from '@/components/StructuredData';
@@ -85,6 +86,11 @@ export const ToolLayout = ({
         <main role="main" aria-label={`${title} tool interface`}>
           {children}
         </main>
+
+        {/* Privacy Reassurance */}
+        <div className="mt-8">
+          <PrivacyBadge />
+        </div>
       </div>
     </Layout>
   );

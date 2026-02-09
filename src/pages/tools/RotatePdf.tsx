@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { RotateCw, RotateCcw, Download, Loader2, FileText, X } from 'lucide-react';
+import { RotateCw, RotateCcw, Download, Loader2, Trash2 } from 'lucide-react';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { PdfFileCard } from '@/components/PdfFileCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { rotatePages, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
+import { rotatePages, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 
 const RotatePdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
@@ -14,15 +16,21 @@ const RotatePdf = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
 
   const rotateLeft = () => setRotation((prev) => prev - 90);
   const rotateRight = () => setRotation((prev) => prev + 90);
 
-  // Normalize rotation to 0, 90, 180, or 270 for the actual PDF operation
   const normalizedRotation = ((rotation % 360) + 360) % 360;
 
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setRotation(0);
+    setIsComplete(false);
   };
 
   const handleRotate = async () => {
@@ -50,7 +58,6 @@ const RotatePdf = () => {
         
         toast.success('PDF rotated successfully!');
       } else {
-        // Multiple files - create ZIP
         const zip = new JSZip();
         const date = new Date().toISOString().split('T')[0];
 
@@ -77,14 +84,33 @@ const RotatePdf = () => {
         setProgress(100);
         toast.success(`${files.length} PDFs rotated successfully!`);
       }
+      setIsComplete(true);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to rotate PDF. Please try again.');
+      toast.error('Failed to rotate PDF. The file may be corrupted.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
     }
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="Rotate PDF"
+        description="Rotate all pages of PDF files by clicking left or right."
+        icon={RotateCw}
+        category="edit"
+        categoryColor="edit"
+      >
+        <SuccessResult
+          message={`${files.length} PDF${files.length > 1 ? 's' : ''} rotated ${normalizedRotation}°!`}
+          detail={files.length > 1 ? 'Downloaded as ZIP archive' : undefined}
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -110,44 +136,28 @@ const RotatePdf = () => {
 
         {files.length > 0 && (
           <div className="space-y-6">
-            {/* File thumbnails grid */}
+            {/* Header with clear all */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">
+                {files.length} file{files.length !== 1 ? 's' : ''} selected
+              </p>
+              {files.length > 1 && (
+                <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground hover:text-destructive gap-1.5">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+
+            {/* File thumbnails grid with rotation preview */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {files.map((file) => (
-                <div
+                <PdfFileCard
                   key={file.id}
-                  className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
-                >
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-
-                  <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
-                    <div 
-                      className="transition-transform duration-300 ease-out"
-                      style={{ transform: `rotate(${rotation}deg)` }}
-                    >
-                      {file.thumbnail ? (
-                        <img
-                          src={file.thumbnail}
-                          alt={file.name}
-                          className="max-w-full max-h-full object-contain"
-                        />
-                      ) : (
-                        <FileText className="w-10 h-10 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'} • {formatFileSize(file.size)}
-                  </p>
-                </div>
+                  file={file}
+                  onRemove={removeFile}
+                  rotation={rotation}
+                />
               ))}
             </div>
 
