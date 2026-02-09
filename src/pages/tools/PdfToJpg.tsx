@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { FileImage, Download, Loader2, X, FileText } from 'lucide-react';
+import { FileImage, Download, Loader2, Trash2 } from 'lucide-react';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { PdfFileCard } from '@/components/PdfFileCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
-import { pdfToImages, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
+import { pdfToImages, type PDFFile } from '@/lib/pdf-tools';
 
 const PdfToJpg = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
@@ -16,9 +18,17 @@ const PdfToJpg = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [resultCount, setResultCount] = useState(0);
 
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setIsComplete(false);
+    setResultCount(0);
   };
 
   const handleConvert = async () => {
@@ -42,7 +52,6 @@ const PdfToJpg = () => {
         const convertedImages = await pdfToImages(files[i].file, format);
         totalImages += convertedImages.length;
 
-        // Add images to zip
         const baseName = files[i].name.replace('.pdf', '');
         convertedImages.forEach((dataUrl, pageIndex) => {
           const base64Data = dataUrl.split(',')[1];
@@ -67,15 +76,35 @@ const PdfToJpg = () => {
       URL.revokeObjectURL(url);
 
       setProgress(100);
+      setResultCount(totalImages);
+      setIsComplete(true);
       toast.success(`Converted ${totalImages} page(s) to ${format.toUpperCase()}!`);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to convert PDF. Please try again.');
+      toast.error('Failed to convert PDF. The file may be corrupted or too large.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
     }
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="PDF to JPG"
+        description="Convert PDF pages to high-quality images."
+        icon={FileImage}
+        category="convert from pdf"
+        categoryColor="convert-from"
+      >
+        <SuccessResult
+          message={`Converted ${resultCount} page(s) to ${format.toUpperCase()}!`}
+          detail="Downloaded as ZIP archive"
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -98,36 +127,28 @@ const PdfToJpg = () => {
 
         {files.length > 0 && (
           <>
-            {/* File thumbnails grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
-                >
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-
-                  <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
-                    {file.thumbnail ? (
-                      <img src={file.thumbnail} alt={file.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <FileText className="w-10 h-10 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {file.pageCount} {file.pageCount === 1 ? 'page' : 'pages'} • {formatFileSize(file.size)}
-                  </p>
-                </div>
-              ))}
+            {/* File cards */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {files.length} file{files.length !== 1 ? 's' : ''} selected
+                </p>
+                {files.length > 1 && (
+                  <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground hover:text-destructive gap-1.5">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {files.map((file) => (
+                  <PdfFileCard
+                    key={file.id}
+                    file={file}
+                    onRemove={removeFile}
+                  />
+                ))}
+              </div>
             </div>
 
             <div className="p-4 bg-muted/50 rounded-xl space-y-4">

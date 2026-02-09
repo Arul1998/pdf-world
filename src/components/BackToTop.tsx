@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export const BackToTop = () => {
+export const BackToTop = forwardRef<HTMLButtonElement>((_, ref) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     const toggleVisibility = () => {
-      // Show button when page is scrolled down 400px
       if (window.scrollY > 400) {
         setIsVisible(true);
       } else {
@@ -29,6 +28,7 @@ export const BackToTop = () => {
 
   return (
     <Button
+      ref={ref}
       onClick={scrollToTop}
       size="icon"
       className={cn(
@@ -44,4 +44,6 @@ export const BackToTop = () => {
       <ArrowUp className="h-5 w-5" />
     </Button>
   );
-};
+});
+
+BackToTop.displayName = 'BackToTop';
