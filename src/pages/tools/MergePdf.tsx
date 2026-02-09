@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileStack, Download, Loader2, GripVertical } from 'lucide-react';
+import { FileStack, Download, Loader2, GripVertical, Trash2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -19,6 +19,7 @@ import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { SortablePdfCard } from '@/components/SortablePdfCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { mergePdfs, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
@@ -27,6 +28,7 @@ const MergePdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -67,19 +69,42 @@ const MergePdf = () => {
       downloadBlob(mergedPdf, filename);
       
       toast.success('PDFs merged successfully!');
-      setFiles([]);
+      setIsComplete(true);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to merge PDFs. Please try again.');
+      toast.error('Failed to merge PDFs. The file may be corrupted or too large for browser processing.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
     }
   };
 
+  const handleReset = () => {
+    setFiles([]);
+    setIsComplete(false);
+  };
+
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="Merge PDF"
+        description="Combine multiple PDF files into a single document. Drag to reorder."
+        icon={FileStack}
+        category="organize"
+        categoryColor="organize"
+      >
+        <SuccessResult
+          message="PDFs merged successfully!"
+          detail={`${files.length} files combined into one document`}
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -100,10 +125,18 @@ const MergePdf = () => {
 
         {files.length > 0 && (
           <div className="space-y-4">
-            {/* Reorder Hint */}
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-              <GripVertical className="h-4 w-4" />
-              <span>Drag tiles to reorder • Order shown = merge order</span>
+            {/* Header with reorder hint + clear all */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <GripVertical className="h-4 w-4" />
+                <span>Drag tiles to reorder • Order shown = merge order</span>
+              </div>
+              {files.length > 1 && (
+                <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground hover:text-destructive gap-1.5">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear All
+                </Button>
+              )}
             </div>
 
             {/* Thumbnail Grid */}

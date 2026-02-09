@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Trash2, Download, Loader2 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { PdfFileCard } from '@/components/PdfFileCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +16,8 @@ const RemovePages = () => {
   const [pagesToRemove, setPagesToRemove] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [removedCount, setRemovedCount] = useState(0);
 
   const parsePages = (input: string): number[] => {
     const results: number[] = [];
@@ -36,6 +40,13 @@ const RemovePages = () => {
     }
     
     return results.sort((a, b) => a - b);
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setPagesToRemove('');
+    setIsComplete(false);
+    setRemovedCount(0);
   };
 
   const handleRemove = async () => {
@@ -74,15 +85,35 @@ const RemovePages = () => {
       downloadBlob(result, filename);
       setProgress(100);
       
+      setRemovedCount(pages.length);
+      setIsComplete(true);
       toast.success(`Removed ${pages.length} page(s) successfully!`);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to remove pages. Please try again.');
+      toast.error('Failed to remove pages. The file may be corrupted.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
     }
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="Remove Pages"
+        description="Delete specific pages from your PDF document."
+        icon={Trash2}
+        category="organize"
+        categoryColor="organize"
+      >
+        <SuccessResult
+          message={`Removed ${removedCount} page(s) successfully!`}
+          detail={`From ${files[0]?.name}`}
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -102,6 +133,15 @@ const RemovePages = () => {
           buttonText="Select File"
           buttonTextWithFiles="Change File"
         />
+
+        {/* File preview card */}
+        {files.length > 0 && (
+          <div className="flex justify-center">
+            <div className="w-40">
+              <PdfFileCard file={files[0]} onRemove={() => setFiles([])} />
+            </div>
+          </div>
+        )}
 
         {files.length > 0 && files[0].pageCount && (
           <div className="space-y-4 p-4 bg-muted/50 rounded-xl">

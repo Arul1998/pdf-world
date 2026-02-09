@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { Unlock, Download, Loader2, Eye, EyeOff, X, FileText } from 'lucide-react';
+import { Unlock, Download, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
+import { PdfFileCard } from '@/components/PdfFileCard';
 import { ProgressBar } from '@/components/ProgressBar';
+import { SuccessResult } from '@/components/SuccessResult';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { unlockPdf, downloadBlob, formatFileSize, type PDFFile } from '@/lib/pdf-tools';
+import { unlockPdf, downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 
 const UnlockPdf = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
@@ -17,9 +19,16 @@ const UnlockPdf = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
 
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setPassword('');
+    setIsComplete(false);
   };
 
   const handleUnlock = async () => {
@@ -47,7 +56,6 @@ const UnlockPdf = () => {
         
         toast.success('PDF unlocked successfully!');
       } else {
-        // Multiple files - create ZIP
         const zip = new JSZip();
         const date = new Date().toISOString().split('T')[0];
         let successCount = 0;
@@ -91,6 +99,7 @@ const UnlockPdf = () => {
         }
       }
       
+      setIsComplete(true);
       setPassword('');
     } catch (error) {
       console.error(error);
@@ -104,6 +113,24 @@ const UnlockPdf = () => {
       setProgress(0);
     }
   };
+
+  if (isComplete) {
+    return (
+      <ToolLayout
+        title="Unlock PDF"
+        description="Remove password protection from your PDF files."
+        icon={Unlock}
+        category="security"
+        categoryColor="security"
+      >
+        <SuccessResult
+          message={`${files.length} PDF${files.length > 1 ? 's' : ''} unlocked!`}
+          detail={files.length > 1 ? 'Downloaded as ZIP archive' : undefined}
+          onReset={handleReset}
+        />
+      </ToolLayout>
+    );
+  }
 
   return (
     <ToolLayout
@@ -126,36 +153,28 @@ const UnlockPdf = () => {
 
         {files.length > 0 && (
           <div className="space-y-6">
-            {/* File thumbnails grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="relative group bg-card border border-border rounded-xl p-3 flex flex-col items-center"
-                >
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-
-                  <div className="w-full aspect-[3/4] bg-muted rounded-lg overflow-hidden mb-2 flex items-center justify-center">
-                    {file.thumbnail ? (
-                      <img src={file.thumbnail} alt={file.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <FileText className="w-10 h-10 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <p className="text-xs font-medium text-foreground truncate w-full text-center" title={file.name}>
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.size)}
-                  </p>
-                </div>
-              ))}
+            {/* File cards */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {files.length} file{files.length !== 1 ? 's' : ''} selected
+                </p>
+                {files.length > 1 && (
+                  <Button variant="ghost" size="sm" onClick={handleReset} className="text-muted-foreground hover:text-destructive gap-1.5">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Clear All
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {files.map((file) => (
+                  <PdfFileCard
+                    key={file.id}
+                    file={file}
+                    onRemove={removeFile}
+                  />
+                ))}
+              </div>
             </div>
 
             {/* Password Input */}
