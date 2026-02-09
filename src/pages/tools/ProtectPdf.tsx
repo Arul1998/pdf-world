@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Lock, Download, Loader2, Eye, EyeOff, X, FileText } from 'lucide-react';
+import { Lock, Download, Loader2, Eye, EyeOff, X, FileText, AlertTriangle } from 'lucide-react';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -148,6 +148,15 @@ const ProtectPdf = () => {
       categoryColor="security"
     >
       <div className="space-y-6">
+        {/* Limitation Notice */}
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
+          <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+          <div className="text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Browser-based protection</p>
+            <p>This tool re-renders your PDF with metadata markers. True PDF encryption is not available in browser-based processing. For enterprise-grade password protection, use desktop software like Adobe Acrobat.</p>
+          </div>
+        </div>
+
         <FileDropZone
           accept={['.pdf']}
           files={files}
@@ -229,17 +238,17 @@ const ProtectPdf = () => {
                         className={cn(
                           "h-1.5 flex-1 rounded-full transition-colors duration-200",
                           bar === 1 && password.length > 0 && (
-                            passwordStrength.level === 'weak' ? 'bg-red-500' :
-                            passwordStrength.level === 'medium' ? 'bg-yellow-500' :
-                            'bg-green-500'
+                            passwordStrength.level === 'weak' ? 'bg-destructive' :
+                            passwordStrength.level === 'medium' ? 'bg-warning' :
+                            'bg-success'
                           ),
                           bar === 2 && (
-                            passwordStrength.level === 'medium' ? 'bg-yellow-500' :
-                            passwordStrength.level === 'strong' ? 'bg-green-500' :
+                            passwordStrength.level === 'medium' ? 'bg-warning' :
+                            passwordStrength.level === 'strong' ? 'bg-success' :
                             'bg-muted'
                           ),
                           bar === 3 && (
-                            passwordStrength.level === 'strong' ? 'bg-green-500' :
+                            passwordStrength.level === 'strong' ? 'bg-success' :
                             'bg-muted'
                           )
                         )}
@@ -249,9 +258,9 @@ const ProtectPdf = () => {
                   <div className="flex items-center justify-between">
                     <span className={cn(
                       "text-xs font-medium capitalize",
-                      passwordStrength.level === 'weak' && 'text-red-500',
-                      passwordStrength.level === 'medium' && 'text-yellow-600',
-                      passwordStrength.level === 'strong' && 'text-green-600'
+                      passwordStrength.level === 'weak' && 'text-destructive',
+                      passwordStrength.level === 'medium' && 'text-warning',
+                      passwordStrength.level === 'strong' && 'text-success'
                     )}>
                       {passwordStrength.level}
                     </span>
@@ -293,7 +302,7 @@ const ProtectPdf = () => {
                 <p className="text-sm text-destructive">Passwords do not match</p>
               )}
               {passwordsMatch && (
-                <p className="text-sm text-green-600">Passwords match</p>
+                <p className="text-sm text-success">Passwords match</p>
               )}
             </div>
 
