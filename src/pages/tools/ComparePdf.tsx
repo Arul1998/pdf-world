@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   GitCompare, Loader2, ArrowLeftRight, Download, X,
-  FileText, Layers, AlignLeft, Search, Minus, Plus, ChevronLeft, ChevronRight, Upload
+  FileText, Layers, AlignLeft, Search, Minus, Plus, ChevronLeft, ChevronRight, Upload, FilePlus2
 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -17,7 +17,6 @@ import {
 import { PrivacyBadge } from '@/components/PrivacyBadge';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'side-by-side' | 'overlay';
 type CompareMode = 'semantic' | 'overlay';
 
 const ComparePdf = () => {
@@ -36,8 +35,6 @@ const ComparePdf = () => {
   const [compareResult, setCompareResult] = useState<CompareResult | null>(null);
   const [searchText, setSearchText] = useState('');
   const [scrollSync, setScrollSync] = useState(true);
-  const [page1Select, setPage1Select] = useState(1);
-  const [page2Select, setPage2Select] = useState(1);
 
   const viewer1Ref = useRef<HTMLDivElement>(null);
   const viewer2Ref = useRef<HTMLDivElement>(null);
@@ -77,6 +74,7 @@ const ComparePdf = () => {
   useEffect(() => {
     if (!bothFilesLoaded) return;
     runComparison();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file1, file2]);
 
   const runComparison = async () => {
@@ -106,6 +104,7 @@ const ComparePdf = () => {
       }
     });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, compareMode, bothFilesLoaded]);
 
   // Scroll sync
@@ -160,78 +159,79 @@ const ComparePdf = () => {
     );
   }) || [];
 
-  // Upload phase
+  // ─── Upload phase ─────────────────────────────────────────────────────────
+  // iLovePDF style: first upload one file, then show a + button for the second
   if (!bothFilesLoaded) {
+    const hasFirstFile = file1.length > 0;
+
     return (
       <ToolLayout
         title="Compare PDFs"
-        description="Find visual differences between two PDF documents with semantic text analysis and content overlay."
+        description="Easily display the differences between two similar files."
         icon={GitCompare}
         category="security"
         categoryColor="security"
       >
-        <div className="space-y-6">
-          <PrivacyBadge />
-          <div className="p-4 bg-muted/50 rounded-xl text-sm text-muted-foreground">
-            <strong>How it works:</strong> Upload two PDFs to compare text changes (Semantic Text mode) or
-            overlay pages visually (Content Overlay mode). A detailed change report is generated automatically.
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <h3 className="font-medium text-sm">Original PDF</h3>
+        <div className="max-w-2xl mx-auto space-y-6">
+          {!hasFirstFile ? (
+            /* Step 1: Upload first file — big centered drop zone like iLovePDF */
+            <div className="flex flex-col items-center gap-4 py-8">
               <FileDropZone
                 accept={['.pdf']}
                 files={file1}
                 onFilesChange={f => setFile1(f.slice(0, 1))}
                 multiple={false}
                 hideFileList
-                buttonText="Select Original"
-                buttonTextWithFiles="Change Original"
+                buttonText="Select PDF file"
+                buttonTextWithFiles="Change File"
               />
-              {file1.length > 0 && (
-                <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
-                  <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{file1[0].name}</p>
-                    <p className="text-xs text-muted-foreground">{file1[0].pageCount} pages</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setFile1([])}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
-            <div className="space-y-2">
-              <h3 className="font-medium text-sm">Modified PDF</h3>
+          ) : (
+            /* Step 2: First file uploaded, show it and prompt for second */
+            <div className="space-y-6">
+              {/* First file card */}
+              <div className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl">
+                <div className="w-14 h-18 bg-muted rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
+                  {file1[0].thumbnail ? (
+                    <img src={file1[0].thumbnail} alt={file1[0].name} className="w-full h-full object-cover" />
+                  ) : (
+                    <FileText className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{file1[0].name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {file1[0].pageCount} page{file1[0].pageCount !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setFile1([])} className="text-muted-foreground hover:text-destructive">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Second file drop zone */}
+              <div className="text-center text-sm text-muted-foreground font-medium">
+                Now select the second PDF to compare
+              </div>
               <FileDropZone
                 accept={['.pdf']}
                 files={file2}
                 onFilesChange={f => setFile2(f.slice(0, 1))}
                 multiple={false}
                 hideFileList
-                buttonText="Select Modified"
-                buttonTextWithFiles="Change Modified"
+                buttonText="Select second PDF"
+                buttonTextWithFiles="Change File"
               />
-              {file2.length > 0 && (
-                <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl">
-                  <FileText className="h-8 w-8 text-muted-foreground shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{file2[0].name}</p>
-                    <p className="text-xs text-muted-foreground">{file2[0].pageCount} pages</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setFile2([])}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </div>
-          </div>
+          )}
+
+          <PrivacyBadge />
         </div>
       </ToolLayout>
     );
   }
 
-  // Comparison view — full-width layout
+  // ─── Comparison view — full-width layout ───────────────────────────────────
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top toolbar */}
@@ -256,14 +256,30 @@ const ComparePdf = () => {
 
         <div className="flex-1" />
 
-        {/* View toggle: side-by-side vs single overlay */}
-        <button
-          onClick={() => setCurrentPage(currentPage)} // just to force re-render on mode switch
-          className="p-1.5 rounded border border-border text-muted-foreground hover:text-foreground"
-          title="Toggle view"
-        >
-          <Layers className="h-4 w-4" />
-        </button>
+        {/* Page navigation in toolbar */}
+        {maxPages > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {currentPage + 1} / {maxPages}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(maxPages - 1, p + 1))}
+              disabled={currentPage >= maxPages - 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 overflow-hidden">
@@ -272,7 +288,14 @@ const ComparePdf = () => {
           {compareMode === 'semantic' ? (
             <>
               {/* Left viewer - Original */}
-              <div className="flex-1 flex flex-col border-r border-border">
+              <div className="flex-1 flex flex-col border-r border-border relative">
+                {/* Close button */}
+                <button
+                  onClick={() => { setFile1([]); handleReset(); }}
+                  className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center hover:bg-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
                 <div className="flex-1 overflow-auto bg-muted/20 flex justify-center p-4"
                   ref={viewer1Ref}
                   onScroll={() => handleScroll('left')}
@@ -285,7 +308,6 @@ const ComparePdf = () => {
                           alt={`Original Page ${currentPage + 1}`}
                           className="shadow-lg rounded"
                         />
-                        {/* Highlight removed text */}
                         {compareResult?.pages[currentPage] && (
                           <DiffHighlights
                             changes={compareResult.pages[currentPage].changes}
@@ -305,11 +327,30 @@ const ComparePdf = () => {
                   zoom={zoom1}
                   onZoomChange={setZoom1}
                   fileName={file1[0]?.name || ''}
+                  pageInfo={thumbnails1.length > 0 ? `Page ${currentPage + 1} of ${thumbnails1.length}` : undefined}
                 />
               </div>
 
+              {/* Divider handle */}
+              <div className="w-px bg-border relative flex items-center justify-center">
+                <div className="absolute z-10 w-6 h-10 bg-card border border-border rounded flex items-center justify-center">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="w-0.5 h-0.5 bg-muted-foreground rounded-full" />
+                    <div className="w-0.5 h-0.5 bg-muted-foreground rounded-full" />
+                    <div className="w-0.5 h-0.5 bg-muted-foreground rounded-full" />
+                  </div>
+                </div>
+              </div>
+
               {/* Right viewer - Modified */}
-              <div className="flex-1 flex flex-col">
+              <div className="flex-1 flex flex-col relative">
+                {/* Close button */}
+                <button
+                  onClick={() => { setFile2([]); handleReset(); }}
+                  className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-foreground/80 text-background flex items-center justify-center hover:bg-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
                 <div className="flex-1 overflow-auto bg-muted/20 flex justify-center p-4"
                   ref={viewer2Ref}
                   onScroll={() => handleScroll('right')}
@@ -340,6 +381,7 @@ const ComparePdf = () => {
                   zoom={zoom2}
                   onZoomChange={setZoom2}
                   fileName={file2[0]?.name || ''}
+                  pageInfo={thumbnails2.length > 0 ? `Page ${currentPage + 1} of ${thumbnails2.length}` : undefined}
                 />
               </div>
             </>
@@ -373,7 +415,7 @@ const ComparePdf = () => {
         {/* Right sidebar - Compare controls */}
         <div className="w-[340px] border-l border-border bg-card flex flex-col shrink-0 hidden lg:flex">
           <div className="p-4 border-b border-border">
-            <h2 className="text-lg font-semibold">Compare PDF</h2>
+            <h2 className="text-lg font-semibold text-center">Compare PDF</h2>
           </div>
 
           {/* Mode tabs */}
@@ -381,32 +423,32 @@ const ComparePdf = () => {
             <button
               onClick={() => setCompareMode('semantic')}
               className={cn(
-                "flex flex-col items-center gap-1 p-3 text-xs transition-colors relative",
+                "flex flex-col items-center gap-1.5 p-4 text-xs transition-colors relative",
                 compareMode === 'semantic'
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {compareMode === 'semantic' && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-success text-success-foreground rounded-full flex items-center justify-center text-[10px]">✓</span>
+                <span className="absolute top-2 right-2 w-5 h-5 bg-success text-success-foreground rounded-full flex items-center justify-center text-[10px] font-bold">✓</span>
               )}
-              <AlignLeft className="h-6 w-6" />
-              Semantic Text
+              <AlignLeft className="h-7 w-7" />
+              <span className="font-medium">Semantic Text</span>
             </button>
             <button
               onClick={() => setCompareMode('overlay')}
               className={cn(
-                "flex flex-col items-center gap-1 p-3 text-xs transition-colors relative",
+                "flex flex-col items-center gap-1.5 p-4 text-xs transition-colors relative",
                 compareMode === 'overlay'
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
               {compareMode === 'overlay' && (
-                <span className="absolute top-1 right-1 w-4 h-4 bg-success text-success-foreground rounded-full flex items-center justify-center text-[10px]">✓</span>
+                <span className="absolute top-2 right-2 w-5 h-5 bg-success text-success-foreground rounded-full flex items-center justify-center text-[10px] font-bold">✓</span>
               )}
-              <Layers className="h-6 w-6" />
-              Content Overlay
+              <Layers className="h-7 w-7" />
+              <span className="font-medium">Content Overlay</span>
             </button>
           </div>
 
@@ -425,17 +467,17 @@ const ComparePdf = () => {
               file={file1[0]}
               thumbnail={thumbnails1[0]}
               pageCount={thumbnails1.length}
-              selectedPage={page1Select}
-              onPageChange={p => { setPage1Select(p); setCurrentPage(p - 1); }}
-              onReplace={() => setFile1([])}
+              currentPage={currentPage + 1}
+              onPageChange={p => setCurrentPage(p - 1)}
+              onReplace={() => { setFile1([]); handleReset(); }}
             />
             <FilePageSelector
               file={file2[0]}
               thumbnail={thumbnails2[0]}
               pageCount={thumbnails2.length}
-              selectedPage={page2Select}
-              onPageChange={p => { setPage2Select(p); setCurrentPage(p - 1); }}
-              onReplace={() => setFile2([])}
+              currentPage={currentPage + 1}
+              onPageChange={p => setCurrentPage(p - 1)}
+              onReplace={() => { setFile2([]); handleReset(); }}
             />
           </div>
 
@@ -470,22 +512,19 @@ const ComparePdf = () => {
                   </p>
                 ) : (
                   filteredPages.map(page => (
-                    <div
-                      key={page.pageIndex}
-                      className="space-y-1"
-                    >
+                    <div key={page.pageIndex} className="space-y-1.5">
                       <button
                         onClick={() => setCurrentPage(page.pageIndex)}
                         className={cn(
-                          "text-xs font-medium w-full text-left px-2 py-1 rounded transition-colors",
+                          "text-xs font-medium w-full text-left px-2 py-1.5 rounded transition-colors",
                           currentPage === page.pageIndex
                             ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         )}
                       >
                         Page {page.pageIndex + 1}
                       </button>
-                      <div className="space-y-1 pl-2">
+                      <div className="space-y-1.5 pl-2">
                         {page.changes
                           .filter(c => c.type !== 'unchanged')
                           .filter(c => !searchText || c.value.toLowerCase().includes(searchText.toLowerCase()))
@@ -508,7 +547,7 @@ const ComparePdf = () => {
               onClick={handleDownloadReport}
               disabled={isProcessing}
               size="lg"
-              className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2"
+              className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground gap-2 text-base font-semibold"
             >
               {isProcessing ? (
                 <>
@@ -525,31 +564,6 @@ const ComparePdf = () => {
           </div>
         </div>
       </div>
-
-      {/* Page navigation bar at bottom */}
-      {maxPages > 1 && (
-        <div className="bg-card border-t border-border px-4 py-2 flex items-center justify-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setCurrentPage(p => Math.max(0, p - 1)); setPage1Select(Math.max(1, page1Select - 1)); setPage2Select(Math.max(1, page2Select - 1)); }}
-            disabled={currentPage === 0}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage + 1} of {maxPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { setCurrentPage(p => Math.min(maxPages - 1, p + 1)); setPage1Select(Math.min(thumbnails1.length, page1Select + 1)); setPage2Select(Math.min(thumbnails2.length, page2Select + 1)); }}
-            disabled={currentPage >= maxPages - 1}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
@@ -559,10 +573,12 @@ const ZoomBar = ({
   zoom,
   onZoomChange,
   fileName,
+  pageInfo,
 }: {
   zoom: number;
   onZoomChange: (z: number) => void;
   fileName: string;
+  pageInfo?: string;
 }) => (
   <div className="bg-card border-t border-border px-3 py-2 flex items-center gap-2">
     <select
@@ -570,7 +586,7 @@ const ZoomBar = ({
       onChange={e => onZoomChange(Number(e.target.value))}
       className="bg-muted text-sm rounded px-2 py-1 border border-border"
     >
-      {[50, 75, 100, 125, 150, 200].map(v => (
+      {[25, 50, 75, 100, 125, 150, 200, 300].map(v => (
         <option key={v} value={v}>{v}%</option>
       ))}
     </select>
@@ -581,6 +597,9 @@ const ZoomBar = ({
       <Plus className="h-3.5 w-3.5" />
     </Button>
     <span className="ml-auto text-xs text-muted-foreground truncate max-w-[200px]">{fileName}</span>
+    {pageInfo && (
+      <span className="text-xs text-muted-foreground ml-2">{pageInfo}</span>
+    )}
   </div>
 );
 
@@ -589,19 +608,19 @@ const FilePageSelector = ({
   file,
   thumbnail,
   pageCount,
-  selectedPage,
+  currentPage,
   onPageChange,
   onReplace,
 }: {
   file: PDFFile;
   thumbnail?: string;
   pageCount: number;
-  selectedPage: number;
+  currentPage: number;
   onPageChange: (page: number) => void;
   onReplace: () => void;
 }) => (
   <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
-    <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0 flex items-center justify-center">
+    <div className="w-12 h-16 bg-muted rounded overflow-hidden shrink-0 flex items-center justify-center border border-border">
       {thumbnail ? (
         <img src={thumbnail} alt={file.name} className="w-full h-full object-cover" />
       ) : (
@@ -613,11 +632,11 @@ const FilePageSelector = ({
       <input
         type="number"
         min={1}
-        max={pageCount}
-        value={selectedPage}
+        max={pageCount || 1}
+        value={Math.min(currentPage, pageCount || 1)}
         onChange={e => {
           const v = parseInt(e.target.value);
-          if (v >= 1 && v <= pageCount) onPageChange(v);
+          if (v >= 1 && v <= (pageCount || 1)) onPageChange(v);
         }}
         className="w-16 mt-1 bg-background border border-border rounded px-2 py-0.5 text-sm"
       />
@@ -632,17 +651,22 @@ const FilePageSelector = ({
 const ChangeItem = ({ change }: { change: DiffChange }) => {
   if (change.type === 'unchanged') return null;
   const isAdded = change.type === 'added';
+  const wordCount = change.value.split(/\s+/).filter(Boolean).length;
   return (
     <div className={cn(
-      "text-xs px-2 py-1 rounded border-l-2",
+      "text-xs px-2 py-1.5 rounded border-l-2",
       isAdded
-        ? "bg-success/5 border-success text-success"
-        : "bg-destructive/5 border-destructive text-destructive"
+        ? "bg-success/5 border-success"
+        : "bg-destructive/5 border-destructive"
     )}>
-      <span className="font-medium">{isAdded ? 'Old' : 'Old'}</span>
-      <span className="ml-2 float-right text-muted-foreground">
-        {isAdded ? `+${change.value.split(/\s+/).length}` : `-${change.value.split(/\s+/).length}`}
-      </span>
+      <div className="flex items-center justify-between">
+        <span className={cn("font-semibold", isAdded ? "text-success" : "text-destructive")}>
+          {isAdded ? 'New' : 'Old'}
+        </span>
+        <span className={cn("text-xs font-medium", isAdded ? "text-success" : "text-destructive")}>
+          {isAdded ? `+${wordCount}` : `-${wordCount}`}
+        </span>
+      </div>
       <p className="mt-0.5 break-words text-foreground/70 line-clamp-3">{change.value}</p>
     </div>
   );
@@ -659,8 +683,6 @@ const DiffHighlights = ({
   const relevantChanges = changes.filter(c => c.type === type);
   if (relevantChanges.length === 0) return null;
 
-  // We can't precisely position text highlights without coordinates,
-  // but we show a subtle indicator that changes exist
   return (
     <div className="absolute inset-0 pointer-events-none">
       <div
