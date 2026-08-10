@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
 // Page size definitions in points (72 points = 1 inch)

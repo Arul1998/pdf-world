@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { downloadBlob, type PDFFile } from '@/lib/pdf-tools';
 import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as FabricImage, FabricObject, PencilBrush, Line, Polygon } from 'fabric';
-import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFDocument, rgb } from 'pdf-lib';
 
 

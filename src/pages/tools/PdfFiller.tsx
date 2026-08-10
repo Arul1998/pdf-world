@@ -10,13 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import { downloadBlob, type PDFFile } from '@/lib/pdf-tools';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFDocument } from 'pdf-lib';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 interface FormField {
   id: string;
@@ -60,7 +55,7 @@ const PdfFiller = () => {
         const fieldName = field.getName();
         const fieldType = field.constructor.name;
 
-        let formField: FormField = {
+        const formField: FormField = {
           id: `field-${index}`,
           name: fieldName || `Field ${index + 1}`,
           type: 'text',

@@ -10,13 +10,8 @@ import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile } from '@/lib/pdf-tools';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 type PdfALevel = 'pdfa-1b' | 'pdfa-2b' | 'pdfa-3b';
 

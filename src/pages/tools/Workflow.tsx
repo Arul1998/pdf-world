@@ -11,13 +11,8 @@ import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { PDFDocument, degrees, rgb, StandardFonts } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile, readFileAsArrayBuffer } from '@/lib/pdf-tools';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 type WorkflowAction = 
   | 'rotate' 

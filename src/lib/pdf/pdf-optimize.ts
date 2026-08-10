@@ -1,5 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
 // Compress PDF by re-rendering pages as images at specified quality

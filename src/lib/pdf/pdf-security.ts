@@ -3,7 +3,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 // and decryption. We use it only for the password tools so the rest of the app
 // keeps using the mainline pdf-lib build.
 import { PDFDocument as SecurePDFDocument } from '@cantoo/pdf-lib';
-import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
 // Unlock PDF (remove password protection).

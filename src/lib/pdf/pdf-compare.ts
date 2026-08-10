@@ -1,4 +1,4 @@
-import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
+import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
 export type TextItem = {

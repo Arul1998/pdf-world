@@ -10,14 +10,9 @@ import { toast } from 'sonner';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import Tesseract from 'tesseract.js';
 import { PDFFile } from '@/lib/pdf-tools';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 const OCR_LANGUAGES = [
   { code: 'eng', name: 'English' },

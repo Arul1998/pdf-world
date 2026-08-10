@@ -59,7 +59,7 @@ const UnlockPdf = () => {
         const zip = new JSZip();
         const date = new Date().toISOString().split('T')[0];
         let successCount = 0;
-        let failedFiles: string[] = [];
+        const failedFiles: string[] = [];
 
         for (let i = 0; i < files.length; i++) {
           setCurrentFileIndex(i);

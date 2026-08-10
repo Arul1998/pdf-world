@@ -36,16 +36,11 @@ const OCR_LANGUAGES = [
   { code: 'heb', name: 'Hebrew' },
 ];
 import { saveAs } from 'file-saver';
-import * as pdfjsLib from 'pdfjs-dist';
+import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile } from '@/lib/pdf-tools';
 import Tesseract from 'tesseract.js';
 
 // Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
-
 interface PagePreview {
   dataUrl: string;
   width: number;
