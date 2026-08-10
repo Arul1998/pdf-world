@@ -29,12 +29,18 @@ Then open the URL shown (e.g. `http://localhost:8080`).
 
 ### Optional: Supabase (contact form, etc.)
 
-Create a `.env` in the project root:
+Copy `.env.example` to `.env` and fill in your own values (never commit `.env`):
 
 ```env
-VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_PROJECT_ID=your_supabase_project_id
+VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=your_supabase_anon_key
 ```
+
+For the contact edge function, set these **Supabase function secrets** (Dashboard → Edge Functions → Secrets), not in the repo:
+
+- `RESEND_API_KEY` — Resend API key
+- `CONTACT_TO_EMAIL` — inbox that receives contact form submissions
 
 ## Scripts
 
