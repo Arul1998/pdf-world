@@ -24,7 +24,7 @@ const WordToPdf = () => {
   const [progress, setProgress] = useState(0);
   const [currentFile, setCurrentFile] = useState('');
 
-  const handleFilesChange = (newFiles: any[]) => {
+  const handleFilesChange = (newFiles: { id?: string; name: string; file: File; size: number }[]) => {
     const wordFiles: WordFile[] = newFiles.map((f) => ({
       id: f.id || generateId(),
       name: f.name,

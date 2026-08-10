@@ -24,6 +24,9 @@ export const compressPdf = async (
   const scale = scaleMap[level];
 
   const arrayBuffer = await readFileAsArrayBuffer(file);
+  // Keep an untouched copy of the original bytes: pdf.js detaches the buffer it
+  // receives, so we snapshot the bytes up front to compare against later.
+  const originalBytes = new Uint8Array(arrayBuffer.slice(0));
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const numPages = pdf.numPages;
 
@@ -61,7 +64,16 @@ export const compressPdf = async (
       });
     }
 
-    return newPdfDoc.save({ useObjectStreams: true });
+    const compressed = await newPdfDoc.save({ useObjectStreams: true });
+
+    // Rasterising can actually enlarge already-optimised or text-heavy PDFs.
+    // In that case return the original bytes untouched so the user never gets a
+    // bigger (and text-less) file than they started with.
+    if (compressed.length >= originalBytes.length) {
+      return originalBytes;
+    }
+
+    return compressed;
   } finally {
     pdf.destroy();
   }

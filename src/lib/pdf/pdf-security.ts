@@ -1,26 +1,46 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+// @cantoo/pdf-lib is a drop-in pdf-lib fork that adds real (AES) PDF encryption
+// and decryption. We use it only for the password tools so the rest of the app
+// keeps using the mainline pdf-lib build.
+import { PDFDocument as SecurePDFDocument } from '@cantoo/pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist/webpack.mjs';
 import { readFileAsArrayBuffer } from './pdf-core';
 
-// Unlock PDF (remove password protection)
+// Unlock PDF (remove password protection).
+// Preferred path: decrypt with the real password and re-save without encryption,
+// which keeps text, fonts and vectors intact. If pdf-lib can't parse the file
+// (its decryption support is narrower than pdf.js), fall back to rasterising the
+// rendered pages so the user still gets an openable, unprotected document.
 export const unlockPdf = async (file: File, password: string): Promise<Uint8Array> => {
   const arrayBuffer = await readFileAsArrayBuffer(file);
 
+  // 1) Try a true, content-preserving decrypt. Note: re-saving a document that
+  //    was loaded with a password keeps its encryption, so we copy the pages
+  //    into a fresh, unencrypted document to actually strip the protection.
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      data: arrayBuffer,
-      password: password,
-    });
+    const locked = await SecurePDFDocument.load(arrayBuffer, { password });
+    const out = await SecurePDFDocument.create();
+    const pages = await out.copyPages(locked, locked.getPageIndices());
+    pages.forEach((p) => out.addPage(p));
+    return await out.save();
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : '';
+    // A wrong password is a user error, not a parsing limitation — surface it.
+    if (message.includes('password') || message.includes('decrypt')) {
+      throw new Error('Incorrect password');
+    }
+    // Otherwise fall through to the rasterise fallback below.
+  }
 
-    const pdf = await loadingTask.promise;
-
+  // 2) Fallback: render pages via pdf.js (which handles more encrypted files)
+  //    and rebuild a flat, unprotected PDF.
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, password }).promise;
     try {
       const newPdfDoc = await PDFDocument.create();
-
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
-        const scale = 2;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale: 2 });
 
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -33,12 +53,10 @@ export const unlockPdf = async (file: File, password: string): Promise<Uint8Arra
 
         const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
         const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-
         const jpgImage = await newPdfDoc.embedJpg(imageBytes);
 
         const originalViewport = page.getViewport({ scale: 1 });
         const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
-
         newPage.drawImage(jpgImage, {
           x: 0,
           y: 0,
@@ -46,23 +64,21 @@ export const unlockPdf = async (file: File, password: string): Promise<Uint8Arra
           height: originalViewport.height,
         });
       }
-
-      return newPdfDoc.save();
+      return await newPdfDoc.save();
     } finally {
       pdf.destroy();
     }
   } catch (error) {
-    if (error instanceof Error && error.message.includes('password')) {
+    if (error instanceof Error && error.message.toLowerCase().includes('password')) {
       throw new Error('Incorrect password');
     }
     throw error;
   }
 };
 
-// Protect PDF with password
-// NOTE: pdf-lib does not support native PDF encryption.
-// This re-renders pages as images and adds metadata markers.
-// For true password encryption, a native desktop tool is required.
+// Protect PDF with a password using real PDF encryption (AES).
+// The original page content (text, fonts, vectors) is preserved — the document
+// is simply encrypted so it cannot be opened without the password.
 export const protectPdf = async (
   file: File,
   password: string,
@@ -70,60 +86,31 @@ export const protectPdf = async (
 ): Promise<Uint8Array> => {
   const arrayBuffer = await readFileAsArrayBuffer(file);
 
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  const numPages = pdf.numPages;
+  // ignoreEncryption lets us load a file that already carries (weak) encryption
+  // so it can be re-protected with the new password.
+  const doc = await SecurePDFDocument.load(arrayBuffer, { ignoreEncryption: true });
 
-  try {
-    const newPdfDoc = await PDFDocument.create();
+  const totalPages = doc.getPageCount();
+  onPageProgress?.(totalPages, totalPages);
 
-    for (let i = 1; i <= numPages; i++) {
-      onPageProgress?.(i, numPages);
+  // userPassword  -> required to open/view the document
+  // ownerPassword -> required to change permissions; set to the same value so
+  //                  there is a single password to remember.
+  doc.encrypt({
+    userPassword: password,
+    ownerPassword: password,
+    permissions: {
+      printing: 'highResolution',
+      modifying: false,
+      copying: false,
+      annotating: false,
+      fillingForms: true,
+      contentAccessibility: true,
+      documentAssembly: false,
+    },
+  });
 
-      const page = await pdf.getPage(i);
-      const scale = 2;
-      const viewport = page.getViewport({ scale });
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-
-      const jpgImage = await newPdfDoc.embedJpg(imageBytes);
-
-      const originalViewport = page.getViewport({ scale: 1 });
-      const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
-
-      newPage.drawImage(jpgImage, {
-        x: 0,
-        y: 0,
-        width: originalViewport.width,
-        height: originalViewport.height,
-      });
-    }
-
-    newPdfDoc.setTitle('Protected Document');
-    newPdfDoc.setSubject('Password: Required');
-    newPdfDoc.setKeywords(['protected', 'password-required']);
-
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    newPdfDoc.setProducer(`PDF World (Protected: ${hashHex.substring(0, 16)})`);
-
-    return newPdfDoc.save();
-  } finally {
-    pdf.destroy();
-  }
+  return await doc.save();
 };
 
 // Redact PDF - permanently remove content by drawing black rectangles

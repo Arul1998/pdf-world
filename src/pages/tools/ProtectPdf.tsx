@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Lock, Download, Loader2, Eye, EyeOff, X, FileText, AlertTriangle } from 'lucide-react';
+import { Lock, Download, Loader2, Eye, EyeOff, X, FileText, ShieldCheck } from 'lucide-react';
 import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
@@ -148,12 +148,12 @@ const ProtectPdf = () => {
       categoryColor="security"
     >
       <div className="space-y-6">
-        {/* Limitation Notice */}
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
-          <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+        {/* Info Notice */}
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary/5">
+          <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Browser-based protection</p>
-            <p>This tool re-renders your PDF with metadata markers. True PDF encryption is not available in browser-based processing. For enterprise-grade password protection, use desktop software like Adobe Acrobat.</p>
+            <p className="font-medium text-foreground mb-1">Real password encryption</p>
+            <p>Your PDF is encrypted (AES) right here in your browser and can only be opened with the password you set. The file is never uploaded. Keep your password safe — it cannot be recovered.</p>
           </div>
         </div>
 

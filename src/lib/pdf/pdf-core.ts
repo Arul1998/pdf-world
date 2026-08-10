@@ -9,7 +9,10 @@ export interface PDFFile {
   thumbnail?: string;
 }
 
-export const generateId = () => Math.random().toString(36).substring(2, 9);
+export const generateId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2, 9);
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
