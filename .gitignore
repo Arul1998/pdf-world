@@ -30,3 +30,6 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Local assistant/tool settings
+.claude/
