@@ -92,7 +92,7 @@ const Index = () => {
                 <Star className="h-4 w-4 text-warning fill-warning" />
                 <Star className="h-4 w-4 text-warning fill-warning" />
               </div>
-              <span className="text-sm font-medium text-foreground">100% Free • No Sign Up • Works Offline</span>
+              <span className="text-sm font-medium text-foreground">100% Free • No Sign Up • Core Tools Work Offline After Loading</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-foreground tracking-tight mb-8 animate-slide-up">

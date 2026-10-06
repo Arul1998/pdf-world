@@ -1,3 +1,4 @@
+import type { PDFPageProxy } from 'pdfjs-dist';
 import { useState, useEffect } from 'react';
 import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages, AlignLeft, X, Archive } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
@@ -135,7 +136,7 @@ const PdfToWord = () => {
   loadPreviews();
 }, [files, selectedFileIndex]);
 
-  const extractImagesFromPage = async (page: any, pageNumber: number): Promise<ExtractedImage[]> => {
+  const extractImagesFromPage = async (page: PDFPageProxy, pageNumber: number): Promise<ExtractedImage[]> => {
     const images: ExtractedImage[] = [];
     
     try {
@@ -148,7 +149,7 @@ const PdfToWord = () => {
         // OPS.paintImageXObject = 85, OPS.paintInlineImageXObject = 86
         if (fn === 85 || fn === 86) {
           const imgName = operatorList.argsArray[i][0];
-          let imgData: any = null;
+          let imgData: { bitmap?: ImageBitmap; data?: Uint8Array; width: number; height: number } | null = null;
           
           try {
             // Try to get from page objects first, then common objects
@@ -228,7 +229,7 @@ const PdfToWord = () => {
     return images;
   };
 
-  const performOcrOnPage = async (page: any, pageNumber: number, totalPages: number, languages: string[]): Promise<string[]> => {
+  const performOcrOnPage = async (page: PDFPageProxy, pageNumber: number, totalPages: number, languages: string[]): Promise<string[]> => {
     try {
       // Render page at higher resolution for better OCR
       const scale = 2.0;
@@ -310,7 +311,7 @@ const PdfToWord = () => {
         width: number;
       }> = [];
       
-      textContent.items.forEach((item: any) => {
+      textContent.items.forEach((item) => {
         if ('str' in item && item.str.trim()) {
           const transform = item.transform;
           const fontSize = Math.abs(transform[0]) || Math.abs(transform[3]) || 12;

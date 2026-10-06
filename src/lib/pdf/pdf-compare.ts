@@ -1,3 +1,4 @@
+import type { TextItem as PdfTextItem } from 'pdfjs-dist/types/src/display/api';
 import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
@@ -53,8 +54,8 @@ export const extractPdfText = async (
       const viewport = page.getViewport({ scale: 1 });
 
       const items: TextItem[] = textContent.items
-        .filter((item: any) => item.str && item.str.trim())
-        .map((item: any) => ({
+        .filter((item): item is PdfTextItem => 'str' in item && Boolean(item.str.trim()))
+        .map((item) => ({
           text: item.str,
           x: item.transform[4],
           y: viewport.height - item.transform[5],
@@ -64,7 +65,7 @@ export const extractPdfText = async (
         }));
 
       const fullText = textContent.items
-        .map((item: any) => item.str)
+        .map((item) => 'str' in item ? item.str : '')
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();

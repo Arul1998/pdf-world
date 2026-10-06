@@ -1,3 +1,4 @@
+import { createBatchArchive } from '@/lib/batch';
 import React, { useState } from 'react';
 import { Presentation, Download, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -209,36 +210,15 @@ const PptToPdf = () => {
         setProgress(100);
         toast.success('PowerPoint converted to PDF!');
       } else {
-        // Multiple files - create ZIP
-        const zip = new JSZip();
-        const date = new Date().toISOString().split('T')[0];
-
-        for (let i = 0; i < files.length; i++) {
-          setCurrentFileIndex(i);
-          setProgress((i / files.length) * 90);
-          
-          try {
-            const pdfBytes = await convertSingleFile(files[i].file);
-            const fileName = files[i].name.replace(/\.(pptx?|ppt)$/i, '.pdf');
-            zip.file(fileName, pdfBytes);
-          } catch (err) {
-            console.warn(`Failed to convert ${files[i].name}:`, err);
-          }
-        }
-
-        setProgress(95);
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `ppt_to_pdf_${date}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
+        const batch = await createBatchArchive(files, async (item, index) => {
+          setCurrentFileIndex(index);
+          setProgress((index / files.length) * 90);
+          return { name: item.name.replace(/\.pptx$/i, '.pdf'), data: await convertSingleFile(item.file) };
+        });
+        downloadBlob(batch.data, `ppt_to_pdf_${new Date().toISOString().split('T')[0]}.zip`, 'application/zip');
         setProgress(100);
-        toast.success(`${files.length} PowerPoint files converted to PDF!`);
+        const message = `${batch.succeeded} converted; ${batch.failed} failed. See the ZIP report for details.`;
+        if (batch.failed) toast.warning(message); else toast.success(message);
       }
     } catch (error) {
       console.error('Conversion error:', error);
@@ -252,7 +232,7 @@ const PptToPdf = () => {
   return (
     <ToolLayout
       title="PowerPoint to PDF"
-      description="Convert PowerPoint presentations to PDF"
+      description="Export PPTX slide text to PDF. Images, charts, and original layout are not preserved."
       icon={Presentation}
       category="Convert to PDF"
       categoryColor="convert-to"
@@ -266,7 +246,7 @@ const PptToPdf = () => {
         </Alert>
 
         <FileDropZone
-          accept={['.ppt', '.pptx']}
+          accept={['.pptx']}
           files={files.map(f => ({ id: f.id, name: f.name, file: f.file, size: f.size, pageCount: 1 }))}
           onFilesChange={handleFilesChange}
           multiple={true}

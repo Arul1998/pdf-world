@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { imageToPdf, downloadBlob, generateId, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin } from '@/lib/pdf-tools';
+import { imageToPdf, downloadBlob, generateId, PAGE_SIZES, type PageSize, type PageOrientation, type PageMargin, type PDFFile } from '@/lib/pdf-tools';
 import { cn } from '@/lib/utils';
 
 interface ImageFile {
@@ -40,7 +40,7 @@ const JpgToPdf = () => {
   );
 
   // Generate thumbnails for uploaded files
-  const handleFilesChange = async (pdfFiles: any[]) => {
+  const handleFilesChange = async (pdfFiles: PDFFile[]) => {
     const imageFiles: ImageFile[] = await Promise.all(
       pdfFiles.map(async (f) => {
         const thumbnail = await generateImageThumbnail(f.file);
