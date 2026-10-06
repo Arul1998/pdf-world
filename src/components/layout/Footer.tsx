@@ -39,7 +39,7 @@ export const Footer = () => {
         {/* Tools Grid */}
         <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mb-10">
           {toolCategories.map((category) => {
-            const categoryTools = getToolsByCategory(category.id);
+            const categoryTools = getToolsByCategory(category.id).filter(tool => !tool.comingSoon);
             return (
               <div key={category.id}>
                 <h4 className="font-semibold text-foreground mb-4 text-sm">{category.name}</h4>

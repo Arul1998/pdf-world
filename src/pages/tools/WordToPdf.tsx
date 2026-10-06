@@ -1,8 +1,8 @@
+import { createBatchArchive } from '@/lib/batch';
 import { useState } from 'react';
-import { FileText, Download, Loader2, X, Plus, Archive } from 'lucide-react';
+import { FileText, Download, Loader2, X, Archive } from 'lucide-react';
 import * as mammoth from 'mammoth';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import JSZip from 'jszip';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -32,21 +32,6 @@ const WordToPdf = () => {
       size: f.size,
     }));
     setFiles(wordFiles);
-  };
-
-  const addMoreFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newFileList = e.target.files;
-    if (!newFileList) return;
-
-    const newFiles: WordFile[] = Array.from(newFileList).map((file) => ({
-      id: generateId(),
-      name: file.name,
-      file: file,
-      size: file.size,
-    }));
-
-    setFiles((prev) => [...prev, ...newFiles]);
-    e.target.value = '';
   };
 
   const removeFile = (id: string) => {
@@ -163,34 +148,15 @@ const WordToPdf = () => {
         setProgress(100);
         toast.success('Word document converted to PDF!');
       } else {
-        // Multiple files - create ZIP
-        const zip = new JSZip();
-        const date = new Date().toISOString().split('T')[0];
-
-        for (let i = 0; i < files.length; i++) {
-          setCurrentFile(files[i].name);
-          setProgress((i / files.length) * 80);
-
-          const pdfBytes = await convertWordToPdf(files[i].file);
-          const filename = files[i].name.replace(/\.(docx?|doc)$/i, '.pdf');
-          zip.file(filename, pdfBytes);
-        }
-
-        setProgress(90);
-        setCurrentFile('Creating ZIP archive...');
-
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `word-to-pdf_${date}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
+        const batch = await createBatchArchive(files, async (item, index) => {
+          setCurrentFile(item.name);
+          setProgress((index / files.length) * 80);
+          return { name: item.name.replace(/\.docx$/i, '.pdf'), data: await convertWordToPdf(item.file) };
+        });
+        downloadBlob(batch.data, `word-to-pdf_${new Date().toISOString().split('T')[0]}.zip`, 'application/zip');
         setProgress(100);
-        toast.success(`${files.length} Word documents converted to PDF!`);
+        const message = `${batch.succeeded} converted; ${batch.failed} failed. See the ZIP report for details.`;
+        if (batch.failed) toast.warning(message); else toast.success(message);
       }
 
       resetAll();
@@ -207,39 +173,26 @@ const WordToPdf = () => {
   return (
     <ToolLayout
       title="Word to PDF"
-      description="Convert Word documents (.doc, .docx) to PDF format."
+      description="Export DOCX text to PDF. Original formatting, tables, and images are not preserved."
       icon={FileText}
       category="convert to pdf"
       categoryColor="convert-to"
     >
       <div className="space-y-6">
-        {files.length === 0 ? (
-          <FileDropZone
-            accept={['.doc', '.docx']}
-            files={[]}
+        <FileDropZone
+            accept={['.docx']}
+            files={files}
+            hideFileList
             onFilesChange={handleFilesChange}
             multiple
           />
-        ) : (
+        {files.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">
                 {files.length} {files.length === 1 ? 'document' : 'documents'} selected
               </h3>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <label className="cursor-pointer">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add More
-                    <input
-                      type="file"
-                      accept=".doc,.docx"
-                      multiple
-                      onChange={addMoreFiles}
-                      className="hidden"
-                    />
-                  </label>
-                </Button>
                 <Button variant="outline" size="sm" onClick={resetAll}>
                   <X className="h-4 w-4 mr-2" />
                   Clear All
@@ -324,9 +277,9 @@ const WordToPdf = () => {
         <div className="bg-muted/30 rounded-lg p-4 text-sm text-muted-foreground">
           <p className="font-medium mb-2">Note:</p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Supports .doc and .docx Word documents</li>
-            <li>Text formatting, tables, and images are preserved</li>
-            <li>Complex layouts may require minor adjustments</li>
+            <li>Supports .docx documents; legacy .doc files are not supported</li>
+            <li>Text-only export: formatting, tables, and images are not preserved</li>
+            <li>Use Word or LibreOffice export when original layout must be preserved</li>
             <li>All processing happens in your browser - files are never uploaded</li>
           </ul>
         </div>

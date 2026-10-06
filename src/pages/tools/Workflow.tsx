@@ -24,7 +24,7 @@ type WorkflowAction =
 interface WorkflowStep {
   id: string;
   action: WorkflowAction;
-  options: Record<string, any>;
+  options: { rotation?: number; text?: string };
 }
 
 const ACTION_OPTIONS: { id: WorkflowAction; name: string; description: string }[] = [
@@ -60,7 +60,7 @@ const Workflow = () => {
     setSteps(steps.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
-  const updateStepOptions = (id: string, options: Record<string, any>) => {
+  const updateStepOptions = (id: string, options: { rotation?: number; text?: string }) => {
     setSteps(steps.map(s => s.id === id ? { ...s, options: { ...s.options, ...options } } : s));
   };
 

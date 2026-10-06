@@ -47,6 +47,8 @@ const EditPdf = () => {
   const [selectedTextObject, setSelectedTextObject] = useState<IText | null>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [pageCanvasStates, setPageCanvasStates] = useState<Map<number, string>>(new Map());
+  const canvasSettingsRef = useRef({ activeColor, brushSize, pageCanvasStates });
+  canvasSettingsRef.current = { activeColor, brushSize, pageCanvasStates };
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -176,7 +178,7 @@ const EditPdf = () => {
         if (currentPage - 1 >= 0) void renderPage(currentPage - 1);
       };
 
-      const ric = (window as any).requestIdleCallback as
+      const ric = window.requestIdleCallback as
         | ((cb: () => void, opts?: { timeout?: number }) => void)
         | undefined;
 
@@ -260,7 +262,7 @@ const EditPdf = () => {
     canvas.renderAll();
 
     // Restore saved state for this page
-    const savedState = pageCanvasStates.get(currentPage);
+    const savedState = canvasSettingsRef.current.pageCanvasStates.get(currentPage);
     if (savedState) {
       canvas.loadFromJSON(JSON.parse(savedState)).then(() => {
         canvas.renderAll();
@@ -269,8 +271,8 @@ const EditPdf = () => {
 
     // Setup drawing brush
     canvas.freeDrawingBrush = new PencilBrush(canvas);
-    canvas.freeDrawingBrush.color = activeColor;
-    canvas.freeDrawingBrush.width = brushSize;
+    canvas.freeDrawingBrush.color = canvasSettingsRef.current.activeColor;
+    canvas.freeDrawingBrush.width = canvasSettingsRef.current.brushSize;
 
     setFabricCanvas(canvas);
     isInitializingRef.current = false;

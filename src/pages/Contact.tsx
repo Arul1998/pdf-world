@@ -1,3 +1,4 @@
+import { ContactVerification } from '@/components/ContactVerification';
 import { useState } from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const Contact = () => {
+  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY?.trim();
+  const available = Boolean(supabase && siteKey);
+  const [token, setToken] = useState('');
+  const [verificationVersion, setVerificationVersion] = useState(0);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
@@ -24,11 +29,15 @@ const Contact = () => {
       return;
     }
 
+    if (!supabase || !siteKey || !token) {
+      toast.error('Contact form is currently unavailable.');
+      return;
+    }
     setSending(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('send-contact-email', {
-        body: { name, email, subject, message }
+        body: { name, email, subject, message, token }
       });
 
       if (error) throw error;
@@ -38,10 +47,12 @@ const Contact = () => {
       setEmail('');
       setSubject('');
       setMessage('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message. Please try again.');
     } finally {
+      setToken('');
+      setVerificationVersion(value => value + 1);
       setSending(false);
     }
   };
@@ -74,11 +85,13 @@ const Contact = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-5">
+                {!available && <p role="status">Contact form is currently unavailable. Please use the project GitHub issues for feedback.</p>}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name *</Label>
                     <Input
                       id="name"
+                    maxLength={100}
                       placeholder="Your name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
@@ -89,6 +102,7 @@ const Contact = () => {
                     <Label htmlFor="email">Email *</Label>
                     <Input
                       id="email"
+                    maxLength={254}
                       type="email"
                       placeholder="your@email.com"
                       value={email}
@@ -102,6 +116,7 @@ const Contact = () => {
                   <Label htmlFor="subject">Subject</Label>
                   <Input
                     id="subject"
+                    maxLength={200}
                     placeholder="What is this about?"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
@@ -112,6 +127,7 @@ const Contact = () => {
                   <Label htmlFor="message">Message *</Label>
                   <Textarea
                     id="message"
+                    maxLength={5000}
                     placeholder="Describe your issue or suggestion..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
@@ -120,7 +136,8 @@ const Contact = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full rounded-xl" disabled={sending}>
+                {available && <ContactVerification key={verificationVersion} siteKey={siteKey!} onToken={setToken} />}
+                <Button type="submit" className="w-full rounded-xl" disabled={sending || !available || !token}>
                   <Send className="h-4 w-4 mr-2" />
                   {sending ? 'Sending...' : 'Send Message'}
                 </Button>

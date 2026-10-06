@@ -1,4 +1,5 @@
 project_id = "cszlhwhbzegevawrajvj"
 
 [functions.send-contact-email]
-verify_jwt = true
+# Public contact endpoint: server-side Turnstile verification is mandatory.
+verify_jwt = false

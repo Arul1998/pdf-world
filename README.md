@@ -13,7 +13,7 @@ Free online PDF tools: merge, split, compress, rotate, convert, edit, and secure
 
 ## Prerequisites
 
-- Node.js 18+ and npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Node.js 22.12+ and npm ([install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
 
 ## Run locally
 
@@ -41,6 +41,11 @@ For the contact edge function, set these **Supabase function secrets** (Dashboar
 
 - `RESEND_API_KEY` — Resend API key
 - `CONTACT_TO_EMAIL` — inbox that receives contact form submissions
+- `CONTACT_FROM_EMAIL` — verified sending address
+- `TURNSTILE_SECRET_KEY` — server-side anti-bot verification secret
+- `CONTACT_ALLOWED_ORIGIN` — exact permitted website origin
+
+Set `VITE_TURNSTILE_SITE_KEY` in the frontend build to enable Contact. Without configuration the PDF tools work and Contact displays an unavailable message.
 
 ## Scripts
 
@@ -54,3 +59,13 @@ For the contact edge function, set these **Supabase function secrets** (Dashboar
 ## Deploy
 
 Build the app with `npm run build` and deploy the `dist` folder to any static host (Vercel, Netlify, GitHub Pages, etc.).
+
+## Quality and release checks
+
+Run `npm run check` for lint, TypeScript, regression tests and the production build.
+GitHub Actions runs these checks on pull requests and main.
+
+See [production readiness](docs/production-readiness.md) for supported conversion limits,
+contact configuration, manual acceptance tests, and remaining launch gates. PDF/A conversion
+is not available. Word, PowerPoint and HTML exports do not preserve original layout.
+Vercel routing is configured in `vercel.json`; other hosts need an equivalent SPA fallback.
