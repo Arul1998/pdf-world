@@ -69,3 +69,5 @@ See [production readiness](docs/production-readiness.md) for supported conversio
 contact configuration, manual acceptance tests, and remaining launch gates. PDF/A conversion
 is not available. Word, PowerPoint and HTML exports do not preserve original layout.
 Vercel routing is configured in `vercel.json`; other hosts need an equivalent SPA fallback.
+
+Security/output regression tests require Poppler utilities (`pdftotext`, `pdfinfo`, `pdfdetach`, `pdftoppm`). On Ubuntu install `poppler-utils`; CI installs them automatically. See [phase-two work](docs/phase-two-security.md) and [remaining launch gates](docs/production-readiness.md).

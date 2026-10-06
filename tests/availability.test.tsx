@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import PdfToPdfa from '../src/pages/tools/PdfToPdfa';
 import OfficeToPdf from '../src/pages/tools/OfficeToPdf';
 afterEach(cleanup);
-const wrap = (element: React.ReactNode) => render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{element}</MemoryRouter>);
+const wrap = (element: React.ReactNode) => render(<MemoryRouter>{element}</MemoryRouter>);
 test('PDF/A does not offer a simulated archival conversion', () => {
   wrap(<PdfToPdfa />);
   expect(screen.getByRole('status')).toBeTruthy();

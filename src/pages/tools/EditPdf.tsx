@@ -14,6 +14,11 @@ import { Canvas as FabricCanvas, Rect, Circle as FabricCircle, IText, Image as F
 import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFDocument, rgb } from 'pdf-lib';
 
+// Existing editor coordinates and saved JSON use top-left object origins.
+// Fabric 7 defaults to centered origins; preserve the editor's coordinate model.
+FabricObject.ownDefaults.originX = 'left';
+FabricObject.ownDefaults.originY = 'top';
+
 
 type Tool = 'select' | 'draw' | 'text' | 'rectangle' | 'circle' | 'image' | 'line' | 'arrow' | 'highlight';
 
@@ -232,6 +237,8 @@ const EditPdf = () => {
       height: pageRender.height,
       backgroundColor: '#ffffff',
       selectionColor: 'rgba(59, 130, 246, 0.15)',
+      fireRightClick: false,
+      fireMiddleClick: false,
       selectionBorderColor: '#3b82f6',
       selectionLineWidth: 1.5,
     });
