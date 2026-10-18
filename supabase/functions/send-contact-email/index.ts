@@ -3,10 +3,44 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const CONTACT_TO_EMAIL = Deno.env.get("CONTACT_TO_EMAIL");
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+// Comma-separated list of origins allowed to call this function, e.g.
+// "https://pdfworld.app,http://localhost:8080". Unset means any origin.
+const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const MAX_LENGTHS = { name: 100, email: 254, subject: 200, message: 5000 };
+const EMAIL_RE = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/;
+
+const buildCorsHeaders = (origin: string | null): Record<string, string> => {
+  const allowOrigin =
+    ALLOWED_ORIGINS.length === 0
+      ? "*"
+      : origin && ALLOWED_ORIGINS.includes(origin)
+        ? origin
+        : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    Vary: "Origin",
+  };
 };
+
+// Every user-supplied value is interpolated into the email HTML, so escape it.
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+// Strip CR/LF so values used in headers (subject) can't inject extra lines.
+const singleLine = (value: string): string => value.replace(/[\r\n]+/g, " ").trim();
+
+const asString = (value: unknown): string => (typeof value === "string" ? value : "");
 
 interface ContactRequest {
   name: string;
@@ -16,40 +50,74 @@ interface ContactRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const corsHeaders = buildCorsHeaders(req.headers.get("origin"));
+  const json = (body: unknown, status: number) =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
+  }
+
+  const origin = req.headers.get("origin");
+  if (ALLOWED_ORIGINS.length > 0 && origin && !ALLOWED_ORIGINS.includes(origin)) {
+    return json({ error: "Origin not allowed" }, 403);
+  }
+
   try {
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY is not configured");
-      return new Response(
-        JSON.stringify({ error: "Email service is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "Email service is not configured" }, 500);
     }
 
     if (!CONTACT_TO_EMAIL) {
       console.error("CONTACT_TO_EMAIL is not configured");
-      return new Response(
-        JSON.stringify({ error: "Email service is not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ error: "Email service is not configured" }, 500);
     }
 
-    const { name, email, subject, message }: ContactRequest = await req.json();
+    let body: Partial<Record<keyof ContactRequest, unknown>>;
+    try {
+      body = await req.json();
+    } catch {
+      return json({ error: "Invalid JSON body" }, 400);
+    }
 
-    console.log("Received contact form submission:", { name, email, subject });
+    const name = singleLine(asString(body.name));
+    const email = singleLine(asString(body.email));
+    const subject = singleLine(asString(body.subject));
+    const message = asString(body.message).trim();
 
     // Validate required fields
-    if (!name?.trim() || !email?.trim() || !message?.trim()) {
-      console.error("Missing required fields");
-      return new Response(
-        JSON.stringify({ error: "Name, email, and message are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!name || !email || !message) {
+      return json({ error: "Name, email, and message are required" }, 400);
     }
+
+    if (!EMAIL_RE.test(email)) {
+      return json({ error: "Please enter a valid email address" }, 400);
+    }
+
+    const tooLong = (Object.keys(MAX_LENGTHS) as (keyof typeof MAX_LENGTHS)[]).find(
+      (field) => ({ name, email, subject, message })[field].length > MAX_LENGTHS[field]
+    );
+    if (tooLong) {
+      return json({ error: `The ${tooLong} field is too long` }, 400);
+    }
+
+    console.log("Received contact form submission");
+
+    const safe = {
+      name: escapeHtml(name),
+      email: escapeHtml(email),
+      subject: escapeHtml(subject || "No subject"),
+      message: escapeHtml(message).replace(/\r?\n/g, "<br />"),
+    };
 
     // Send email using Resend API
     const res = await fetch("https://api.resend.com/emails", {
@@ -100,26 +168,26 @@ const handler = async (req: Request): Promise<Response> => {
                           <tr>
                             <td style="padding-bottom: 20px;">
                               <p style="margin: 0 0 4px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Name</p>
-                              <p style="margin: 0; font-size: 16px; color: #111827; font-weight: 500;">${name}</p>
+                              <p style="margin: 0; font-size: 16px; color: #111827; font-weight: 500;">${safe.name}</p>
                             </td>
                           </tr>
                           <tr>
                             <td style="padding-bottom: 20px;">
                               <p style="margin: 0 0 4px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Email</p>
-                              <p style="margin: 0; font-size: 16px;"><a href="mailto:${email}" style="color: #3b82f6; text-decoration: none;">${email}</a></p>
+                              <p style="margin: 0; font-size: 16px;"><a href="mailto:${safe.email}" style="color: #3b82f6; text-decoration: none;">${safe.email}</a></p>
                             </td>
                           </tr>
                           <tr>
                             <td style="padding-bottom: 24px;">
                               <p style="margin: 0 0 4px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Subject</p>
-                              <p style="margin: 0; font-size: 16px; color: #111827; font-weight: 500;">${subject || "No subject"}</p>
+                              <p style="margin: 0; font-size: 16px; color: #111827; font-weight: 500;">${safe.subject}</p>
                             </td>
                           </tr>
                           <tr>
                             <td style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
                               <p style="margin: 0 0 12px; font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Message</p>
                               <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; border-left: 4px solid #3b82f6;">
-                                <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6;">${message.replace(/\n/g, "<br />")}</p>
+                                <p style="margin: 0; font-size: 15px; color: #374151; line-height: 1.6;">${safe.message}</p>
                               </div>
                             </td>
                           </tr>
@@ -143,25 +211,18 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
-      console.error("Resend API error:", errorData);
-      throw new Error(errorData.message || "Failed to send email");
+      const errorData = await res.json().catch(() => null);
+      console.error("Resend API error:", res.status, errorData);
+      return json({ error: "Failed to send email" }, 502);
     }
 
-    const emailResponse = await res.json();
+    console.log("Email sent successfully");
 
-    console.log("Email sent successfully:", emailResponse);
-
-    return new Response(
-      JSON.stringify({ success: true, message: "Email sent successfully" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error: any) {
+    return json({ success: true, message: "Email sent successfully" }, 200);
+  } catch (error: unknown) {
+    // Log details server-side only; don't leak internals to the caller.
     console.error("Error sending contact email:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ error: "Failed to send email" }, 500);
   }
 };
 

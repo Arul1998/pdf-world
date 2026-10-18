@@ -176,7 +176,7 @@ const EditPdf = () => {
         if (currentPage - 1 >= 0) void renderPage(currentPage - 1);
       };
 
-      const ric = (window as any).requestIdleCallback as
+      const ric = (window as Window & { requestIdleCallback?: unknown }).requestIdleCallback as
         | ((cb: () => void, opts?: { timeout?: number }) => void)
         | undefined;
 

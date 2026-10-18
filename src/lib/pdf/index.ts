@@ -7,3 +7,5 @@ export * from './pdf-security';
 export * from './pdf-render';
 export * from './pdf-optimize';
 export * from './pdf-compare';
+export * from './pdf-raster';
+export * from './pdf-pdfa';

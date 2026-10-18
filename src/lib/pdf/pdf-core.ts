@@ -40,6 +40,19 @@ export const readFileAsDataURL = (file: File): Promise<string> => {
   });
 };
 
+// Revoking the object URL in the same tick as click() can cancel the download in
+// some browsers (notably Safari and older Firefox), so give it time to start.
+const triggerDownload = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+};
+
 export const downloadBlob = (data: Uint8Array | string, filename: string, mimeType: string = 'application/pdf') => {
   let blob: Blob;
 
@@ -55,14 +68,7 @@ export const downloadBlob = (data: Uint8Array | string, filename: string, mimeTy
     blob = new Blob([new Uint8Array(data)], { type: mimeType });
   }
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerDownload(blob, filename);
 };
 
 export const downloadMultiple = async (files: { data: Uint8Array | string; name: string; mimeType?: string }[]) => {
@@ -78,12 +84,5 @@ export const downloadMultiple = async (files: { data: Uint8Array | string; name:
   }
 
   const blob = await zip.generateAsync({ type: 'blob' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `pdf-world-${new Date().toISOString().split('T')[0]}.zip`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  triggerDownload(blob, `pdf-world-${new Date().toISOString().split('T')[0]}.zip`);
 };

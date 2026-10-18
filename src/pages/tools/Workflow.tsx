@@ -13,6 +13,7 @@ import { saveAs } from 'file-saver';
 import { PDFDocument, degrees, rgb, StandardFonts } from 'pdf-lib';
 import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile, readFileAsArrayBuffer } from '@/lib/pdf-tools';
+import { addRasterPage, renderPageToJpeg } from '@/lib/pdf/pdf-raster';
 
 type WorkflowAction = 
   | 'rotate' 
@@ -21,10 +22,15 @@ type WorkflowAction =
   | 'page-numbers' 
   | 'merge';
 
+interface WorkflowStepOptions {
+  rotation?: number;
+  text?: string;
+}
+
 interface WorkflowStep {
   id: string;
   action: WorkflowAction;
-  options: Record<string, any>;
+  options: WorkflowStepOptions;
 }
 
 const ACTION_OPTIONS: { id: WorkflowAction; name: string; description: string }[] = [
@@ -60,7 +66,7 @@ const Workflow = () => {
     setSteps(steps.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
-  const updateStepOptions = (id: string, options: Record<string, any>) => {
+  const updateStepOptions = (id: string, options: WorkflowStepOptions) => {
     setSteps(steps.map(s => s.id === id ? { ...s, options: { ...s.options, ...options } } : s));
   };
 
@@ -76,40 +82,24 @@ const Workflow = () => {
   };
 
   const applyCompress = async (pdfBytes: Uint8Array): Promise<Uint8Array> => {
-    const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
-    const newPdfDoc = await PDFDocument.create();
+    // pdf.js detaches the buffer it is given, so hand it a copy and keep the original.
+    const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
     const quality = 0.6;
     const scale = 1.2;
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale });
-      
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-      
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      
-      const imageDataUrl = canvas.toDataURL('image/jpeg', quality);
-      const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-      const jpgImage = await newPdfDoc.embedJpg(imageBytes);
-      
-      const originalViewport = page.getViewport({ scale: 1 });
-      const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
-      
-      newPage.drawImage(jpgImage, {
-        x: 0,
-        y: 0,
-        width: originalViewport.width,
-        height: originalViewport.height,
-      });
+
+    try {
+      const newPdfDoc = await PDFDocument.create();
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        await addRasterPage(newPdfDoc, await renderPageToJpeg(page, scale, quality));
+      }
+
+      const compressed = await newPdfDoc.save({ useObjectStreams: true });
+      // Rasterising can grow text-heavy files; never hand back a bigger one.
+      return compressed.length < pdfBytes.length ? compressed : pdfBytes;
+    } finally {
+      await pdf.destroy();
     }
-    
-    return newPdfDoc.save({ useObjectStreams: true });
   };
 
   const applyWatermark = async (pdfBytes: Uint8Array, text: string): Promise<Uint8Array> => {

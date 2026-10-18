@@ -9,11 +9,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile } from '@/lib/pdf-tools';
-
-type PdfALevel = 'pdfa-1b' | 'pdfa-2b' | 'pdfa-3b';
+import { convertToPdfA, type PdfALevel } from '@/lib/pdf/pdf-pdfa';
 
 const PDFA_LEVELS = [
   { id: 'pdfa-1b', name: 'PDF/A-1b', description: 'Basic conformance, most compatible' },
@@ -33,72 +30,11 @@ const PdfToPdfa = () => {
     setFiles(files.filter(f => f.id !== id));
   };
 
-  const convertToPdfa = async (file: File, level: PdfALevel): Promise<Uint8Array> => {
-    const arrayBuffer = await file.arrayBuffer();
-    
-    // Load and re-render PDF to ensure compliance
-    const sourcePdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const totalPages = sourcePdf.numPages;
-    
-    const pdfDoc = await PDFDocument.create();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    
-    for (let i = 1; i <= totalPages; i++) {
-      setProgressMessage(`Converting page ${i}/${totalPages}...`);
-      setProgress((i / totalPages) * 70);
-      
-      const page = await sourcePdf.getPage(i);
-      const scale = 2.0;
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      
-      if (!context) continue;
-      
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-      
-      // Convert to high-quality JPEG
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-      const jpgImage = await pdfDoc.embedJpg(imageBytes);
-      
-      // Get original page dimensions
-      const originalViewport = page.getViewport({ scale: 1 });
-      const newPage = pdfDoc.addPage([originalViewport.width, originalViewport.height]);
-      
-      newPage.drawImage(jpgImage, {
-        x: 0,
-        y: 0,
-        width: originalViewport.width,
-        height: originalViewport.height,
-      });
-    }
-    
-    setProgressMessage('Adding PDF/A metadata...');
-    setProgress(80);
-    
-    // Add PDF/A metadata
-    const now = new Date();
-    pdfDoc.setTitle(file.name.replace('.pdf', ''));
-    pdfDoc.setCreator('PDF World - PDF/A Converter');
-    pdfDoc.setProducer('PDF World');
-    pdfDoc.setCreationDate(now);
-    pdfDoc.setModificationDate(now);
-    
-    // Add PDF/A compliance information in keywords (metadata simulation)
-    pdfDoc.setKeywords([`PDF/A`, level.toUpperCase(), 'Archival', 'Long-term preservation']);
-    pdfDoc.setSubject(`Converted to ${level.toUpperCase()} for long-term archival`);
-    
-    setProgressMessage('Finalizing...');
-    setProgress(90);
-    
-    return pdfDoc.save({
-      useObjectStreams: false, // PDF/A-1 doesn't support object streams
+  const convertToPdfa = (file: File, level: PdfALevel): Promise<Uint8Array> =>
+    convertToPdfA(file, level, (page, total) => {
+      setProgressMessage(`Converting page ${page}/${total}...`);
+      setProgress((page / total) * 90);
     });
-  };
 
   const handleConvert = async () => {
     if (files.length === 0) {
@@ -116,10 +52,11 @@ const PdfToPdfa = () => {
         setProgress(100);
         
         const blob = new Blob([new Uint8Array(pdfaData)], { type: 'application/pdf' });
-        saveAs(blob, files[0].name.replace('.pdf', `_${pdfaLevel}.pdf`));
+        saveAs(blob, files[0].name.replace(/\.pdf$/i, '') + `_${pdfaLevel}.pdf`);
         toast.success(`Converted to ${pdfaLevel.toUpperCase()}!`);
       } else {
         const zip = new JSZip();
+        const failed: string[] = [];
         
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
@@ -127,11 +64,16 @@ const PdfToPdfa = () => {
           
           try {
             const pdfaData = await convertToPdfa(file.file, pdfaLevel);
-            const pdfaName = file.name.replace('.pdf', `_${pdfaLevel}.pdf`);
+            const pdfaName = file.name.replace(/\.pdf$/i, '') + `_${pdfaLevel}.pdf`;
             zip.file(pdfaName, pdfaData);
           } catch (err) {
             console.error(`Failed to convert ${file.name}:`, err);
+            failed.push(file.name);
           }
+        }
+
+        if (failed.length === files.length) {
+          throw new Error('All files failed to convert');
         }
         
         setProgressMessage('Creating ZIP archive...');
@@ -140,7 +82,11 @@ const PdfToPdfa = () => {
         setProgress(100);
         
         saveAs(zipBlob, `pdf-to-pdfa_${new Date().toISOString().split('T')[0]}.zip`);
-        toast.success(`Converted ${files.length} files to ${pdfaLevel.toUpperCase()}!`);
+        const converted = files.length - failed.length;
+        toast.success(`Converted ${converted} files to ${pdfaLevel.toUpperCase()}!`);
+        if (failed.length > 0) {
+          toast.error(`Could not convert: ${failed.join(', ')}`);
+        }
       }
       
       setFiles([]);
@@ -231,7 +177,8 @@ const PdfToPdfa = () => {
               <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
               <p className="text-muted-foreground">
                 PDF/A is an ISO-standardized format designed for long-term archival of electronic documents.
-                It ensures the document will be viewable in the future regardless of software changes.
+                To guarantee conformance, each page is converted to a high-resolution image, so text in the
+                output will not be selectable or searchable. Run OCR afterwards if you need searchable text.
               </p>
             </div>
           </>

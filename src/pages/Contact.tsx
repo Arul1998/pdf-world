@@ -27,7 +27,7 @@ const Contact = () => {
     setSending(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+      const { error } = await supabase.functions.invoke('send-contact-email', {
         body: { name, email, subject, message }
       });
 
@@ -38,7 +38,7 @@ const Contact = () => {
       setEmail('');
       setSubject('');
       setMessage('');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message. Please try again.');
     } finally {
@@ -82,6 +82,7 @@ const Contact = () => {
                       placeholder="Your name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      maxLength={100}
                       required
                     />
                   </div>
@@ -93,6 +94,7 @@ const Contact = () => {
                       placeholder="your@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      maxLength={254}
                       required
                     />
                   </div>
@@ -105,6 +107,7 @@ const Contact = () => {
                     placeholder="What is this about?"
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
+                    maxLength={200}
                   />
                 </div>
 
@@ -116,6 +119,7 @@ const Contact = () => {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     rows={5}
+                    maxLength={5000}
                     required
                   />
                 </div>

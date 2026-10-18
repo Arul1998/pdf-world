@@ -1,3 +1,4 @@
+import type { TextItem as PdfJsTextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
 import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
@@ -52,9 +53,13 @@ export const extractPdfText = async (
       const textContent = await page.getTextContent();
       const viewport = page.getViewport({ scale: 1 });
 
-      const items: TextItem[] = textContent.items
-        .filter((item: any) => item.str && item.str.trim())
-        .map((item: any) => ({
+      const textItems = textContent.items.filter(
+        (item: PdfJsTextItem | TextMarkedContent): item is PdfJsTextItem => 'str' in item
+      );
+
+      const items: TextItem[] = textItems
+        .filter((item) => item.str.trim())
+        .map((item) => ({
           text: item.str,
           x: item.transform[4],
           y: viewport.height - item.transform[5],
@@ -63,8 +68,8 @@ export const extractPdfText = async (
           fontName: item.fontName || '',
         }));
 
-      const fullText = textContent.items
-        .map((item: any) => item.str)
+      const fullText = textItems
+        .map((item) => item.str)
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -74,7 +79,7 @@ export const extractPdfText = async (
 
     return pages;
   } finally {
-    pdf.destroy();
+    await pdf.destroy();
   }
 };
 
@@ -284,7 +289,7 @@ export const renderOverlayPage = async (
 
     return canvas.toDataURL('image/png');
   } finally {
-    pdf1.destroy();
-    pdf2.destroy();
+    await pdf1.destroy();
+    await pdf2.destroy();
   }
 };

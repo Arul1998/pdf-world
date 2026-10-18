@@ -5,10 +5,9 @@
 // resolve under Vite and causes `getDocument` to hang).
 //
 // Using Vite's `?worker` suffix lets Vite bundle the worker correctly for both
-// the dev server and production builds, and we hand it to pd.js as a
+// the dev server and production builds, and we hand it to pdf.js as a
 // `workerPort` so no fragile URL/`workerSrc` juggling is needed.
 import * as pdfjsLib from 'pdfjs-dist';
-// eslint-disable-next-line import/no-unresolved
 import PdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?worker';
 
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerPort) {

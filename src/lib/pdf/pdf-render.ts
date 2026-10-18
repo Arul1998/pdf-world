@@ -35,7 +35,7 @@ export const generatePdfThumbnail = async (file: File, timeoutMs: number = 4000)
 
       return canvas.toDataURL('image/jpeg', 0.5);
     } finally {
-      pdf.destroy();
+      await pdf.destroy();
     }
   })();
 
@@ -76,7 +76,7 @@ export const generatePdfPageThumbnails = async (file: File, scale: number = 0.3)
 
       return thumbnails;
     } finally {
-      pdf.destroy();
+      await pdf.destroy();
     }
   } catch (error) {
     console.error('Failed to generate page thumbnails:', error);
@@ -121,7 +121,7 @@ export const renderPdfPages = async (
 
       return pages;
     } finally {
-      pdf.destroy();
+      await pdf.destroy();
     }
   } catch (error) {
     console.error('Failed to render PDF pages:', error);

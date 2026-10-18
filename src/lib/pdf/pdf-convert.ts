@@ -110,7 +110,7 @@ export const pdfToImages = async (file: File, format: 'jpeg' | 'png' = 'jpeg', q
       images.push(canvas.toDataURL(`image/${format}`, quality));
     }
   } finally {
-    pdf.destroy();
+    await pdf.destroy();
   }
 
   return images;

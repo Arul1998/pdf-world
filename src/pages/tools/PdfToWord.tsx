@@ -36,6 +36,8 @@ const OCR_LANGUAGES = [
   { code: 'heb', name: 'Hebrew' },
 ];
 import { saveAs } from 'file-saver';
+import type { PDFPageProxy } from 'pdfjs-dist';
+import type { TextItem as PdfJsTextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
 import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile } from '@/lib/pdf-tools';
 import Tesseract from 'tesseract.js';
@@ -135,7 +137,7 @@ const PdfToWord = () => {
   loadPreviews();
 }, [files, selectedFileIndex]);
 
-  const extractImagesFromPage = async (page: any, pageNumber: number): Promise<ExtractedImage[]> => {
+  const extractImagesFromPage = async (page: PDFPageProxy, pageNumber: number): Promise<ExtractedImage[]> => {
     const images: ExtractedImage[] = [];
     
     try {
@@ -145,10 +147,9 @@ const PdfToWord = () => {
       
       for (let i = 0; i < operatorList.fnArray.length; i++) {
         const fn = operatorList.fnArray[i];
-        // OPS.paintImageXObject = 85, OPS.paintInlineImageXObject = 86
-        if (fn === 85 || fn === 86) {
+        if (fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintInlineImageXObject) {
           const imgName = operatorList.argsArray[i][0];
-          let imgData: any = null;
+          let imgData: { bitmap?: ImageBitmap; data?: Uint8ClampedArray; width?: number; height?: number } | null = null;
           
           try {
             // Try to get from page objects first, then common objects
@@ -228,7 +229,7 @@ const PdfToWord = () => {
     return images;
   };
 
-  const performOcrOnPage = async (page: any, pageNumber: number, totalPages: number, languages: string[]): Promise<string[]> => {
+  const performOcrOnPage = async (page: PDFPageProxy, pageNumber: number, totalPages: number, languages: string[]): Promise<string[]> => {
     try {
       // Render page at higher resolution for better OCR
       const scale = 2.0;
@@ -310,7 +311,7 @@ const PdfToWord = () => {
         width: number;
       }> = [];
       
-      textContent.items.forEach((item: any) => {
+      textContent.items.forEach((item: PdfJsTextItem | TextMarkedContent) => {
         if ('str' in item && item.str.trim()) {
           const transform = item.transform;
           const fontSize = Math.abs(transform[0]) || Math.abs(transform[3]) || 12;

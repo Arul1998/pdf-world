@@ -41,6 +41,7 @@ For the contact edge function, set these **Supabase function secrets** (Dashboar
 
 - `RESEND_API_KEY` — Resend API key
 - `CONTACT_TO_EMAIL` — inbox that receives contact form submissions
+- `ALLOWED_ORIGINS` — optional, comma-separated list of site origins allowed to call the function (e.g. `https://your-domain.com,http://localhost:8080`); leave unset to allow any origin
 
 ## Scripts
 

@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
+import { addRasterPage, renderPageToJpeg } from './pdf-raster';
 
 // Compress PDF by re-rendering pages as images at specified quality
 export const compressPdf = async (
@@ -37,31 +38,7 @@ export const compressPdf = async (
       onPageProgress?.(i, numPages);
 
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale });
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      if (!context) continue;
-
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      await page.render({ canvasContext: context, viewport, canvas }).promise;
-
-      const imageDataUrl = canvas.toDataURL('image/jpeg', quality);
-      const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-
-      const jpgImage = await newPdfDoc.embedJpg(imageBytes);
-
-      const originalViewport = page.getViewport({ scale: 1 });
-      const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
-
-      newPage.drawImage(jpgImage, {
-        x: 0,
-        y: 0,
-        width: originalViewport.width,
-        height: originalViewport.height,
-      });
+      await addRasterPage(newPdfDoc, await renderPageToJpeg(page, scale, quality));
     }
 
     const compressed = await newPdfDoc.save({ useObjectStreams: true });
@@ -75,7 +52,7 @@ export const compressPdf = async (
 
     return compressed;
   } finally {
-    pdf.destroy();
+    await pdf.destroy();
   }
 };
 
@@ -127,32 +104,7 @@ export const repairPdf = async (
 
         try {
           const page = await pdf.getPage(i);
-          const scale = 2;
-          const viewport = page.getViewport({ scale });
-
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          if (!context) continue;
-
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-
-          await page.render({ canvasContext: context, viewport, canvas }).promise;
-
-          const imageDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-          const imageBytes = Uint8Array.from(atob(imageDataUrl.split(',')[1]), c => c.charCodeAt(0));
-
-          const jpgImage = await newPdfDoc.embedJpg(imageBytes);
-
-          const originalViewport = page.getViewport({ scale: 1 });
-          const newPage = newPdfDoc.addPage([originalViewport.width, originalViewport.height]);
-
-          newPage.drawImage(jpgImage, {
-            x: 0,
-            y: 0,
-            width: originalViewport.width,
-            height: originalViewport.height,
-          });
+          await addRasterPage(newPdfDoc, await renderPageToJpeg(page, 2, 0.95));
 
           successfulPages++;
         } catch (pageError) {
@@ -176,7 +128,7 @@ export const repairPdf = async (
         issuesFixed,
       };
     } finally {
-      pdf.destroy();
+      await pdf.destroy();
     }
   } catch (error) {
     console.error('Repair failed:', error);
@@ -285,6 +237,6 @@ export const ocrPdf = async (
     };
   } finally {
     await worker.terminate();
-    pdf.destroy();
+    await pdf.destroy();
   }
 };
