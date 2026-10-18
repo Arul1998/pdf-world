@@ -133,7 +133,7 @@ export const tools: Tool[] = [
   {
     id: 'compress',
     name: 'Compress PDF',
-    description: 'Reduce file size while maintaining quality',
+    description: 'Reduce size by flattening pages to images',
     icon: Minimize2,
     category: 'optimize',
     path: '/tools/compress',
@@ -171,11 +171,11 @@ export const tools: Tool[] = [
   {
     id: 'word-to-pdf',
     name: 'Word to PDF',
-    description: 'Convert Word documents to PDF',
+    description: 'Export DOCX text to PDF; layout and images are not preserved',
     icon: FileText,
     category: 'convert-to',
     path: '/tools/word-to-pdf',
-    accepts: ['.doc', '.docx'],
+    accepts: ['.docx'],
   },
   {
     id: 'excel-to-pdf',
@@ -189,16 +189,16 @@ export const tools: Tool[] = [
   {
     id: 'ppt-to-pdf',
     name: 'PowerPoint to PDF',
-    description: 'Convert PowerPoint slides to PDF',
+    description: 'Export PPTX slide text to PDF; layout and images are not preserved',
     icon: Presentation,
     category: 'convert-to',
     path: '/tools/ppt-to-pdf',
-    accepts: ['.ppt', '.pptx'],
+    accepts: ['.pptx'],
   },
   {
     id: 'html-to-pdf',
     name: 'Web to PDF',
-    description: 'Convert web pages to PDF',
+    description: 'Export HTML text to PDF; CSS and images are not preserved',
     icon: Globe,
     category: 'convert-to',
     path: '/tools/html-to-pdf',
@@ -207,7 +207,7 @@ export const tools: Tool[] = [
   {
     id: 'office-to-pdf',
     name: 'Office to PDF',
-    description: 'Convert any Office document to PDF',
+    description: 'Choose a dedicated text or table export tool',
     icon: FileText,
     category: 'convert-to',
     path: '/tools/office-to-pdf',
@@ -272,7 +272,8 @@ export const tools: Tool[] = [
   {
     id: 'pdf-to-pdfa',
     name: 'PDF to PDF/A',
-    description: 'Convert to archival PDF format',
+    description: 'Archival conversion is not yet available',
+    comingSoon: true,
     icon: FileCheck,
     category: 'convert-from',
     path: '/tools/pdf-to-pdfa',

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Upload, FileText, X, AlertCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatFileSize, generateId, getPdfPageCount, generatePdfThumbnail, type PDFFile } from '@/lib/pdf-tools';
@@ -8,6 +8,7 @@ interface FileDropZoneProps {
   accept: string[];
   multiple?: boolean;
   maxFiles?: number;
+  maxTotalSize?: number;
   maxSize?: number; // in bytes
   files: PDFFile[];
   onFilesChange: (files: PDFFile[]) => void;
@@ -22,8 +23,9 @@ interface FileDropZoneProps {
 export const FileDropZone = ({
   accept,
   multiple = true,
-  maxFiles = 50,
-  maxSize = 100 * 1024 * 1024, // 100MB
+  maxFiles = 20,
+  maxTotalSize = 100 * 1024 * 1024,
+  maxSize = 50 * 1024 * 1024, // 50 MiB per file
   files,
   onFilesChange,
   className,
@@ -32,12 +34,14 @@ export const FileDropZone = ({
   buttonTextWithFiles = 'Add More Files',
   processPdfMetadata = true,
 }: FileDropZoneProps) => {
+  const processingRef = useRef(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingCount, setProcessingCount] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
 
   const processFiles = useCallback(async (newFiles: FileList | File[]) => {
+    if (processingRef.current) return;
     setError(null);
     const fileArray = Array.from(newFiles);
     
@@ -52,6 +56,11 @@ export const FileDropZone = ({
       return;
     }
 
+    if ([...files.map(f => f.file), ...fileArray].reduce((total, file) => total + file.size, 0) > maxTotalSize) {
+      setError(`Combined file size exceeds the ${formatFileSize(maxTotalSize)} batch limit. Select fewer or smaller files.`);
+      return;
+    }
+    processingRef.current = true;
     setIsProcessing(true);
     setProcessingCount({ current: 0, total: fileArray.length });
 
@@ -108,6 +117,7 @@ export const FileDropZone = ({
       processedFiles.push(...results.filter((f): f is PDFFile => f !== null));
     }
 
+    processingRef.current = false;
     setIsProcessing(false);
     setProcessingCount({ current: 0, total: 0 });
 
@@ -117,7 +127,7 @@ export const FileDropZone = ({
     } else {
       onFilesChange(processedFiles.slice(0, 1));
     }
-  }, [accept, files, maxFiles, maxSize, multiple, onFilesChange, processPdfMetadata]);
+  }, [accept, files, maxFiles, maxSize, maxTotalSize, multiple, onFilesChange, processPdfMetadata]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -163,6 +173,8 @@ export const FileDropZone = ({
       >
         <input
           type="file"
+          aria-label="Select files"
+          disabled={isProcessing}
           accept={acceptString}
           multiple={multiple}
           onChange={handleInputChange}
@@ -245,6 +257,8 @@ export const FileDropZone = ({
                   variant="ghost"
                   size="icon"
                   onClick={() => removeFile(file.id)}
+                  aria-label={`Remove ${file.name}`}
+                  disabled={isProcessing}
                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
                 >
                   <X className="h-4 w-4" />

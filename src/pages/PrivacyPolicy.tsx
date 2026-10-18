@@ -12,7 +12,7 @@ const PrivacyPolicy = () => {
               <Shield className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-3xl md:text-4xl font-bold mb-4">Privacy Policy</h1>
-            <p className="text-muted-foreground">Last updated: January 2026</p>
+            <p className="text-muted-foreground">Last updated: October 2026</p>
           </div>
 
           {/* Content */}
@@ -63,14 +63,14 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Cookies</h2>
               <p className="text-muted-foreground leading-relaxed">
-                We use minimal cookies for essential functionality like remembering your theme preference (dark/light mode). We do not use tracking cookies or share data with advertisers.
+                We use local browser storage for preferences such as your theme, and a service worker cache for application assets. We do not use tracking cookies or share data with advertisers.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Third-Party Services</h2>
               <p className="text-muted-foreground leading-relaxed">
-                We may use third-party services for analytics or email delivery. These services have their own privacy policies and are selected for their commitment to user privacy.
+                Document processing remains in your browser. OCR may download its engine and language files, and fonts may load from external providers. When the contact form is enabled, Cloudflare Turnstile verifies the request, Supabase receives your contact details, and Resend delivers them to our inbox. These requests disclose network information such as your IP address to the relevant providers. No document is attached automatically.
               </p>
             </section>
 

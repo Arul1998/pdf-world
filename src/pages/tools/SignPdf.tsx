@@ -80,7 +80,7 @@ const SignPdf = () => {
   const [canvasHistory, setCanvasHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
 
-  const getCurrentColor = () => SIGNATURE_COLORS.find(c => c.id === selectedColor)?.value || '#1a1a1a';
+  const getCurrentColor = useCallback(() => SIGNATURE_COLORS.find(c => c.id === selectedColor)?.value || '#1a1a1a', [selectedColor]);
   const getCurrentThickness = () => SIGNATURE_THICKNESS.find(t => t.id === selectedThickness)?.value || 2.5;
 
   useEffect(() => {
@@ -251,7 +251,7 @@ const SignPdf = () => {
     ctx.textBaseline = 'middle';
     ctx.fillText(typedName, canvas.width / 2, canvas.height / 2);
     setSignatureDataUrl(canvas.toDataURL('image/png'));
-  }, [typedName, selectedFont, selectedColor]);
+  }, [typedName, selectedFont, getCurrentColor]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

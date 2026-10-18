@@ -22,15 +22,10 @@ type WorkflowAction =
   | 'page-numbers' 
   | 'merge';
 
-interface WorkflowStepOptions {
-  rotation?: number;
-  text?: string;
-}
-
 interface WorkflowStep {
   id: string;
   action: WorkflowAction;
-  options: WorkflowStepOptions;
+  options: { rotation?: number; text?: string };
 }
 
 const ACTION_OPTIONS: { id: WorkflowAction; name: string; description: string }[] = [
@@ -66,7 +61,7 @@ const Workflow = () => {
     setSteps(steps.map(s => s.id === id ? { ...s, ...updates } : s));
   };
 
-  const updateStepOptions = (id: string, options: WorkflowStepOptions) => {
+  const updateStepOptions = (id: string, options: { rotation?: number; text?: string }) => {
     setSteps(steps.map(s => s.id === id ? { ...s, options: { ...s.options, ...options } } : s));
   };
 

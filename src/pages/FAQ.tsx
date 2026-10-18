@@ -9,7 +9,7 @@ const faqs = [
   },
   {
     question: "What file size limits are there?",
-    answer: "Since processing happens in your browser, file size limits depend on your device's memory. Generally, files up to 100MB work smoothly on most devices."
+    answer: "Since processing happens in your browser, file size limits depend on your device's memory. The shared picker allows up to 50 MiB per file, 100 MiB per batch, and 20 files. Rendering-heavy tools can require substantially more memory; use smaller documents on mobile."
   },
   {
     question: "Are these tools free to use?",

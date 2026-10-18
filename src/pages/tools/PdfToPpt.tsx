@@ -1,3 +1,4 @@
+import { createBatchArchive } from '@/lib/batch';
 import { useState } from 'react';
 import { Presentation, Download, Loader2, Trash2, Archive } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
@@ -234,28 +235,14 @@ const PdfToPpt = () => {
         saveAs(pptBlob, files[0].name.replace('.pdf', '.pptx'));
         toast.success('PDF converted to PowerPoint!');
       } else {
-        const zip = new JSZip();
-        
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
+        const batch = await createBatchArchive(files, async file => {
           setCurrentFile(file.name);
-          
-          try {
-            const pptBlob = await convertPdfToPpt(file.file);
-            const pptName = file.name.replace('.pdf', '.pptx');
-            zip.file(pptName, pptBlob);
-          } catch (err) {
-            console.error(`Failed to convert ${file.name}:`, err);
-          }
-        }
-        
-        setProgressMessage('Creating ZIP archive...');
-        setProgress(95);
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
+          return { name: file.name.replace(/\.pdf$/i, '.pptx'), data: await convertPdfToPpt(file.file) };
+        });
         setProgress(100);
-        
-        saveAs(zipBlob, `pdf-to-ppt_${new Date().toISOString().split('T')[0]}.zip`);
-        toast.success(`Converted ${files.length} files!`);
+        saveAs(new Blob([new Uint8Array(batch.data)], { type: 'application/zip' }), `pdf-to-ppt_${new Date().toISOString().split('T')[0]}.zip`);
+        const message = `${batch.succeeded} converted; ${batch.failed} failed. See the ZIP report for details.`;
+        if (batch.failed) toast.warning(message); else toast.success(message);
       }
       
       setFiles([]);

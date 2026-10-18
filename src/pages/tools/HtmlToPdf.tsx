@@ -227,7 +227,7 @@ const HtmlToPdf = () => {
   return (
     <ToolLayout
       title="Web to PDF"
-      description="Convert HTML files to PDF documents with preserved formatting."
+      description="Export HTML text to PDF. CSS, images, links, and original layout are not preserved."
       icon={Globe}
       category="convert-to"
       categoryColor="convert-to"

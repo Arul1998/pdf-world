@@ -1,3 +1,4 @@
+import type { PDFPageProxy } from 'pdfjs-dist';
 import { useState, useEffect } from 'react';
 import { FileType, Download, Loader2, Trash2, FileText, ChevronLeft, ChevronRight, ImageIcon, ScanText, Languages, AlignLeft, X, Archive } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
@@ -36,8 +37,6 @@ const OCR_LANGUAGES = [
   { code: 'heb', name: 'Hebrew' },
 ];
 import { saveAs } from 'file-saver';
-import type { PDFPageProxy } from 'pdfjs-dist';
-import type { TextItem as PdfJsTextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
 import { pdfjsLib } from '@/lib/pdf/pdfjs-setup';
 import { PDFFile } from '@/lib/pdf-tools';
 import Tesseract from 'tesseract.js';
@@ -149,7 +148,7 @@ const PdfToWord = () => {
         const fn = operatorList.fnArray[i];
         if (fn === pdfjsLib.OPS.paintImageXObject || fn === pdfjsLib.OPS.paintInlineImageXObject) {
           const imgName = operatorList.argsArray[i][0];
-          let imgData: { bitmap?: ImageBitmap; data?: Uint8ClampedArray; width?: number; height?: number } | null = null;
+          let imgData: { bitmap?: ImageBitmap; data?: Uint8Array; width: number; height: number } | null = null;
           
           try {
             // Try to get from page objects first, then common objects
@@ -311,7 +310,7 @@ const PdfToWord = () => {
         width: number;
       }> = [];
       
-      textContent.items.forEach((item: PdfJsTextItem | TextMarkedContent) => {
+      textContent.items.forEach((item) => {
         if ('str' in item && item.str.trim()) {
           const transform = item.transform;
           const fontSize = Math.abs(transform[0]) || Math.abs(transform[3]) || 12;

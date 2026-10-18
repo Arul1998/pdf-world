@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { EyeOff, Download, Loader2, Plus, Trash2 } from 'lucide-react';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { REDACTION_RENDER_LIMITS } from '@/lib/pdf/pdf-render';
 import { redactPdf, downloadBlob, renderPdfPages, type PDFFile } from '@/lib/pdf-tools';
 
 interface RedactionArea {
@@ -28,21 +29,21 @@ const RedactPdf = () => {
   const [tempRedaction, setTempRedaction] = useState<RedactionArea | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const loadPages = useCallback(async () => {
-    if (files.length === 0) return;
-    const renderedPages = await renderPdfPages(files[0].file, 1.5);
-    setPages(renderedPages);
-  }, [files]);
-
   useEffect(() => {
+    let cancelled = false;
+    setPages([]);
+    setCurrentPage(0);
+    setRedactions([]);
+    setIsDrawing(false);
+    setDrawStart(null);
+    setTempRedaction(null);
     if (files.length > 0) {
-      loadPages();
-      setCurrentPage(0);
-      setRedactions([]);
-    } else {
-      setPages([]);
+      renderPdfPages(files[0].file, 1.5, REDACTION_RENDER_LIMITS)
+        .then(rendered => { if (!cancelled) setPages(rendered); })
+        .catch(error => { if (!cancelled) toast.error(error instanceof Error ? error.message : 'Unable to preview this PDF.'); });
     }
-  }, [files, loadPages]);
+    return () => { cancelled = true; };
+  }, [files]);
 
   const getMousePosition = (e: React.MouseEvent) => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -118,7 +119,7 @@ const RedactPdf = () => {
       toast.success('PDF redacted successfully!');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to redact PDF. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to redact PDF.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
@@ -136,6 +137,7 @@ const RedactPdf = () => {
       categoryColor="security"
     >
       <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">Export flattens every page into an image. Text selection, links, interactive forms, attachments and digital signatures are removed. Review every marked area before sharing. Large documents may exceed browser limits.</p>
         <FileDropZone
           accept={['.pdf']}
           files={files}
@@ -178,6 +180,8 @@ const RedactPdf = () => {
                     }}
                   >
                     <button
+                      aria-label="Remove redaction area"
+                      onMouseDown={e => e.stopPropagation()}
                       onClick={(e) => {
                         e.stopPropagation();
                         removeRedaction(redaction.id);
@@ -252,7 +256,7 @@ const RedactPdf = () => {
 
         <Button
           onClick={handleRedact}
-          disabled={files.length === 0 || redactions.length === 0 || isProcessing}
+          disabled={files.length === 0 || pages.length === 0 || redactions.length === 0 || isProcessing}
           size="lg"
           className="w-full"
         >

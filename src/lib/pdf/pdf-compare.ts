@@ -1,4 +1,4 @@
-import type { TextItem as PdfJsTextItem, TextMarkedContent } from 'pdfjs-dist/types/src/display/api';
+import type { TextItem as PdfTextItem } from 'pdfjs-dist/types/src/display/api';
 import { pdfjsLib } from './pdfjs-setup';
 import { readFileAsArrayBuffer } from './pdf-core';
 
@@ -53,12 +53,8 @@ export const extractPdfText = async (
       const textContent = await page.getTextContent();
       const viewport = page.getViewport({ scale: 1 });
 
-      const textItems = textContent.items.filter(
-        (item: PdfJsTextItem | TextMarkedContent): item is PdfJsTextItem => 'str' in item
-      );
-
-      const items: TextItem[] = textItems
-        .filter((item) => item.str.trim())
+      const items: TextItem[] = textContent.items
+        .filter((item): item is PdfTextItem => 'str' in item && Boolean(item.str.trim()))
         .map((item) => ({
           text: item.str,
           x: item.transform[4],
@@ -68,8 +64,8 @@ export const extractPdfText = async (
           fontName: item.fontName || '',
         }));
 
-      const fullText = textItems
-        .map((item) => item.str)
+      const fullText = textContent.items
+        .map((item) => 'str' in item ? item.str : '')
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();

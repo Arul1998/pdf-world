@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Unlock, Download, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react';
-import JSZip from 'jszip';
+import { createBatchArchive } from '@/lib/batch';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { PdfFileCard } from '@/components/PdfFileCard';
@@ -19,7 +19,7 @@ const UnlockPdf = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentFileIndex, setCurrentFileIndex] = useState(0);
-  const [isComplete, setIsComplete] = useState(false);
+  const [summary, setSummary] = useState<{ succeeded: number; failed: number } | null>(null);
 
   const removeFile = (id: string) => {
     setFiles(files.filter(f => f.id !== id));
@@ -28,7 +28,7 @@ const UnlockPdf = () => {
   const handleReset = () => {
     setFiles([]);
     setPassword('');
-    setIsComplete(false);
+    setSummary(null);
   };
 
   const handleUnlock = async () => {
@@ -55,58 +55,25 @@ const UnlockPdf = () => {
         setProgress(100);
         
         toast.success('PDF unlocked successfully!');
+        setSummary({ succeeded: 1, failed: 0 });
       } else {
-        const zip = new JSZip();
-        const date = new Date().toISOString().split('T')[0];
-        let successCount = 0;
-        const failedFiles: string[] = [];
-
-        for (let i = 0; i < files.length; i++) {
-          setCurrentFileIndex(i);
-          setProgress((i / files.length) * 90);
-          
-          try {
-            const result = await unlockPdf(files[i].file, password);
-            const filename = files[i].name.replace('.pdf', '_unlocked.pdf');
-            zip.file(filename, result);
-            successCount++;
-          } catch {
-            failedFiles.push(files[i].name);
-          }
-        }
-
-        if (successCount > 0) {
-          setProgress(95);
-          const zipBlob = await zip.generateAsync({ type: 'blob' });
-          const url = URL.createObjectURL(zipBlob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `unlocked_pdfs_${date}.zip`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-
-          setProgress(100);
-          
-          if (failedFiles.length > 0) {
-            toast.warning(`${successCount} PDFs unlocked. ${failedFiles.length} failed (wrong password?)`);
-          } else {
-            toast.success(`${successCount} PDFs unlocked successfully!`);
-          }
-        } else {
-          toast.error('Failed to unlock any PDFs. Check the password.');
-        }
+        const batch = await createBatchArchive(files, async (file, index) => {
+          setCurrentFileIndex(index);
+          setProgress(index / files.length * 90);
+          return { name: file.name.replace(/\.pdf$/i, '_unlocked.pdf'), data: await unlockPdf(file.file, password) };
+        });
+        downloadBlob(batch.data, `unlocked_pdfs_${new Date().toISOString().slice(0, 10)}.zip`, 'application/zip');
+        setSummary({ succeeded: batch.succeeded, failed: batch.failed });
+        if (batch.failed) toast.warning(`${batch.succeeded} PDFs unlocked; ${batch.failed} failed. See the results report in the ZIP.`);
+        else toast.success(`${batch.succeeded} PDFs unlocked successfully!`);
       }
-      
-      setIsComplete(true);
       setPassword('');
     } catch (error) {
       console.error(error);
       if (error instanceof Error && error.message.includes('password')) {
         toast.error('Incorrect password. Please try again.');
       } else {
-        toast.error('Failed to unlock PDF. The file may not be password-protected or the password is incorrect.');
+        toast.error(error instanceof Error ? error.message : 'Failed to unlock PDF.');
       }
     } finally {
       setIsProcessing(false);
@@ -114,7 +81,7 @@ const UnlockPdf = () => {
     }
   };
 
-  if (isComplete) {
+  if (summary) {
     return (
       <ToolLayout
         title="Unlock PDF"
@@ -124,8 +91,8 @@ const UnlockPdf = () => {
         categoryColor="security"
       >
         <SuccessResult
-          message={`${files.length} PDF${files.length > 1 ? 's' : ''} unlocked!`}
-          detail={files.length > 1 ? 'Downloaded as ZIP archive' : undefined}
+          message={`${summary.succeeded} PDF${summary.succeeded > 1 ? 's' : ''} unlocked!`}
+          detail={summary.failed ? `${summary.failed} failed; see the results report in the ZIP.` : files.length > 1 ? 'Downloaded as ZIP archive' : undefined}
           onReset={handleReset}
         />
       </ToolLayout>
@@ -141,6 +108,7 @@ const UnlockPdf = () => {
       categoryColor="security"
     >
       <div className="space-y-6">
+        <p className="text-sm text-muted-foreground">Unlock preserves searchable content and forms when supported. Unsupported files fail instead of being flattened. Re-saving invalidates digital signatures.</p>
         <FileDropZone
           accept={['.pdf']}
           files={files}

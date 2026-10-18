@@ -191,7 +191,7 @@ const CompressPdf = () => {
   return (
     <ToolLayout
       title="Compress PDF"
-      description="Reduce PDF file size while maintaining quality."
+      description="Reduce size by flattening pages to images. Smaller outputs lose searchable text, links, forms, annotations, and digital signatures."
       icon={Minimize2}
       category="optimize"
       categoryColor="optimize"

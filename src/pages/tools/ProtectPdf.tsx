@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Lock, Download, Loader2, Eye, EyeOff, X, FileText, ShieldCheck } from 'lucide-react';
-import JSZip from 'jszip';
+import { createBatchArchive } from '@/lib/batch';
 import { ToolLayout } from '@/components/ToolLayout';
 import { FileDropZone } from '@/components/FileDropZone';
 import { ProgressBar } from '@/components/ProgressBar';
@@ -91,45 +91,28 @@ const ProtectPdf = () => {
         });
         setProgress(90);
         
-        const filename = files[0].name.replace('.pdf', '_protected.pdf');
+        const filename = files[0].name.replace(/\.pdf$/i, '_protected.pdf');
         downloadBlob(result, filename);
         setProgress(100);
         
         toast.success('PDF protected successfully!');
       } else {
-        // Multiple files - create ZIP
-        const zip = new JSZip();
-        const date = new Date().toISOString().split('T')[0];
-
-        for (let i = 0; i < files.length; i++) {
-          setCurrentFileIndex(i);
-          setProgress((i / files.length) * 90);
-          
-          const result = await protectPdf(files[i].file, password);
-          const filename = files[i].name.replace('.pdf', '_protected.pdf');
-          zip.file(filename, result);
-        }
-
-        setProgress(95);
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
-        const url = URL.createObjectURL(zipBlob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `protected_pdfs_${date}.zip`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
+        const batch = await createBatchArchive(files, async (file, index) => {
+          setCurrentFileIndex(index);
+          setProgress(index / files.length * 90);
+          return { name: file.name.replace(/\.pdf$/i, '_protected.pdf'), data: await protectPdf(file.file, password) };
+        });
+        downloadBlob(batch.data, `protected_pdfs_${new Date().toISOString().slice(0, 10)}.zip`, 'application/zip');
         setProgress(100);
-        toast.success(`${files.length} PDFs protected successfully!`);
+        if (batch.failed) toast.warning(`${batch.succeeded} PDFs protected; ${batch.failed} failed. See the results report in the ZIP.`);
+        else toast.success(`${batch.succeeded} PDFs protected successfully!`);
       }
       
       setPassword('');
       setConfirmPassword('');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to protect PDF. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'Failed to protect PDF.');
     } finally {
       setIsProcessing(false);
       setProgress(0);
@@ -137,7 +120,7 @@ const ProtectPdf = () => {
   };
 
   const passwordsMatch = password === confirmPassword && password.length > 0;
-  const canProtect = password.length >= 4 && passwordsMatch;
+  const canProtect = password.trim().length > 0 && password.length >= 4 && password.length <= 32 && !/[^\x20-\x7e]/.test(password) && passwordsMatch;
 
   return (
     <ToolLayout
@@ -153,7 +136,7 @@ const ProtectPdf = () => {
           <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Real password encryption</p>
-            <p>Your PDF is encrypted (AES) right here in your browser and can only be opened with the password you set. The file is never uploaded. Keep your password safe — it cannot be recovered.</p>
+            <p>Your PDF is encrypted (AES-128) right here in your browser and can only be opened with the password you set. The file is never uploaded. Use 4–32 printable ASCII characters (English letters, numbers, spaces and symbols). Unlock an already encrypted PDF first. Re-saving invalidates digital signatures. Keep your password safe — it cannot be recovered.</p>
           </div>
         </div>
 
@@ -210,7 +193,8 @@ const ProtectPdf = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password (min 4 characters)"
+                  placeholder="Enter password (4–32 ASCII characters)"
+                  maxLength={32}
                   className="pr-10"
                 />
                 <Button
@@ -282,6 +266,7 @@ const ProtectPdf = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm your password"
+                  maxLength={32}
                   className="pr-10"
                 />
                 <Button

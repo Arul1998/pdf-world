@@ -94,8 +94,8 @@ const Watermark = () => {
   useEffect(() => {
     if (isMosaic) {
       setPosition('tile');
-    } else if (position === 'tile') {
-      setPosition('top-left');
+    } else {
+      setPosition(previous => previous === 'tile' ? 'top-left' : previous);
     }
   }, [isMosaic]);
 

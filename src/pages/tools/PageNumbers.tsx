@@ -184,10 +184,6 @@ const PageNumbers = () => {
       );
       setFileInfos(infos);
       
-      // Set default toPage based on first file
-      if (infos.length > 0 && selectedFileIndex === 0) {
-        setToPage(infos[0].pageCount);
-      }
     };
     
     if (files.length > 0) {
@@ -204,7 +200,7 @@ const PageNumbers = () => {
       setToPage(fileInfos[selectedFileIndex].pageCount);
       setSkippedPages(new Set());
     }
-  }, [selectedFileIndex, fileInfos.length]);
+  }, [selectedFileIndex, fileInfos]);
 
   const getFormat = () => {
     if (textFormat === 'custom') return customFormat;
